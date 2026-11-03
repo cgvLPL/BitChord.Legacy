@@ -40,7 +40,7 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         let payload: [String: Any] = [
             "context": ["client": [
                 "clientName": "WEB_REMIX",
-                "clientVersion": "1.20250616.01.00",
+                "clientVersion": authStore?.account?.clientVersion ?? "1.20250616.01.00",
                 "hl": Locale.current.languageCode ?? "en",
                 "gl": Locale.current.regionCode ?? "US"
             ]],
