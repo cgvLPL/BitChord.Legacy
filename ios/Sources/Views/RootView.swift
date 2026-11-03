@@ -324,7 +324,7 @@ private struct SearchScreen: View {
     }
 
     private func play(_ track: Track) {
-        if let url = track.streamURL {
+        if track.streamURL != nil {
             playback.play(track)
             return
         }
@@ -399,7 +399,7 @@ private struct LibraryScreen: View {
                         if let error = musicLibrary.errorMessage {
                             Text(error).font(.footnote).foregroundColor(.orange)
                         }
-                        ForEach(Array((musicLibrary.snapshot.syncWarnings ?? []).enumerated()), id: \\.offset) { _, warning in
+                        ForEach(musicLibrary.snapshot.syncWarnings ?? [], id: \\.self) { warning in
                             Text(warning).font(.footnote).foregroundColor(.orange)
                         }
                     }
@@ -533,9 +533,7 @@ private struct LibraryScreen: View {
     private func playLibraryTrack(_ track: Track) async {
         let videoID = track.providerID ?? track.id
         do {
-            guard let streamURL = try await YouTubeAudioResolver().resolve(videoID: videoID) else {
-                throw CatalogError.noPlayableStream
-            }
+            let streamURL = try await YouTubeAudioResolver().resolve(videoID: videoID)
             let playable = Track(id: track.id, title: track.title, artist: track.artist,
                                  album: track.album, artworkURL: track.artworkURL,
                                  streamURL: streamURL, provider: "youtube", providerID: videoID)
@@ -543,7 +541,7 @@ private struct LibraryScreen: View {
         } catch {
             playback.notice = "Opening this track in YouTube Music because direct playback is unavailable."
             if let url = URL(string: "https://music.youtube.com/watch?v=\(videoID)") {
-                UIApplication.shared.open(url)
+                await UIApplication.shared.open(url)
             }
         }
     }
