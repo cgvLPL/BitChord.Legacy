@@ -98,14 +98,16 @@ final class YouTubeMusicCatalog: MusicCatalogService {
 final class AddonCatalog: MusicCatalogService {
     private let baseURL: URL
     private let session: URLSession
+    private let quality: String
 
-    init(baseURLString: String, session: URLSession = .shared) throws {
+    init(baseURLString: String, quality: String = "Best available", session: URLSession = .shared) throws {
         guard let url = URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)),
               url.scheme == "https" || url.scheme == "http", url.host != nil else {
             throw CatalogError.invalidURL
         }
         self.baseURL = url
         self.session = session
+        self.quality = quality
     }
 
     func search(_ query: String) async throws -> [Track] {
@@ -113,6 +115,9 @@ final class AddonCatalog: MusicCatalogService {
             throw CatalogError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "q", value: query)]
+        if quality != "Best available" {
+            components.queryItems?.append(URLQueryItem(name: "quality", value: quality == "High" ? "HIGH" : "LOW"))
+        }
         guard let url = components.url else { throw CatalogError.invalidURL }
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
@@ -139,6 +144,11 @@ final class AddonCatalog: MusicCatalogService {
         let url = baseURL.appendingPathComponent("stream").appendingPathComponent(trackID)
         var request = URLRequest(url: url)
         request.timeoutInterval = 25
+        if quality != "Best available",
+           var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.queryItems = [URLQueryItem(name: "quality", value: quality == "High" ? "HIGH" : "LOW")]
+            if let qualifiedURL = components.url { request.url = qualifiedURL }
+        }
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200,
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
