@@ -167,8 +167,7 @@ private struct SearchScreen: View {
                     LazyVStack(spacing: 4) {
                         ForEach(results) { track in
                             TrackRow(track: track, action: {
-                                if track.streamURL != nil { playback.play(track) }
-                                else { openYouTube(track) }
+                                play(track)
                             }, secondaryAction: { playback.addToQueue(track) },
                                downloadAction: {
                                    Task {
@@ -211,6 +210,29 @@ private struct SearchScreen: View {
             errorMessage = error.localizedDescription
         }
         isSearching = false
+    }
+
+    private func play(_ track: Track) {
+        if track.streamURL != nil { playback.play(track); return }
+        guard track.provider == "addon", let id = track.providerID,
+              let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL) else {
+            openYouTube(track)
+            return
+        }
+        Task { @MainActor in
+            do {
+                guard let stream = try await addon.streamURL(trackID: id) else {
+                    playback.notice = "This addon did not return a playable stream."
+                    return
+                }
+                let playable = Track(id: track.id, title: track.title, artist: track.artist,
+                                     album: track.album, artworkURL: track.artworkURL,
+                                     streamURL: stream, provider: track.provider, providerID: track.providerID)
+                playback.play(playable)
+            } catch {
+                playback.notice = error.localizedDescription
+            }
+        }
     }
 
     private func openYouTube(_ track: Track) {
