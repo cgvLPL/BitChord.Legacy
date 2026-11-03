@@ -128,17 +128,14 @@ final class AddonCatalog: MusicCatalogService {
             let artist = row["artist"] as? String ?? "Unknown artist"
             let album = row["album"] as? String ?? ""
             let artwork = ((row["artworkURL"] as? String) ?? (row["albumArtworkURL"] as? String)).flatMap(URL.init(string:))
-            var stream = (row["streamURL"] as? String).flatMap(URL.init(string:))
-            if stream == nil {
-                stream = try? await resolveStream(trackID: id)
-            }
+            let stream = (row["streamURL"] as? String).flatMap(URL.init(string:))
             tracks.append(Track(id: "addon:\(id)", title: title, artist: artist, album: album,
                                 artworkURL: artwork, streamURL: stream, provider: "addon", providerID: id))
         }
         return tracks
     }
 
-    private func resolveStream(trackID: String) async throws -> URL? {
+    func streamURL(trackID: String) async throws -> URL? {
         let url = baseURL.appendingPathComponent("stream").appendingPathComponent(trackID)
         var request = URLRequest(url: url)
         request.timeoutInterval = 25
