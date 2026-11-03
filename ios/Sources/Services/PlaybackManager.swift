@@ -163,7 +163,7 @@ final class PlaybackManager: ObservableObject {
 
     private func observePlaybackTime() {
         if let observer = timeObserver { player?.removeTimeObserver(observer) }
-        let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+        let interval = CMTime(seconds: 1.0, preferredTimescale: 600)
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self = self else { return }
             self.currentTime = time.seconds.isFinite ? time.seconds : 0
