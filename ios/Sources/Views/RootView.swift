@@ -58,7 +58,7 @@ struct RootView: View {
     }
 
     private var searchTab: some View {
-        SearchScreen(showingPlayer: $showingPlayer)
+        SearchScreen()
             .tabItem { Label("Search", systemImage: "magnifyingglass") }
             .tag(2)
     }
