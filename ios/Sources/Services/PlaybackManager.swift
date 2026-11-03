@@ -14,6 +14,7 @@ final class PlaybackManager: ObservableObject {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var interruptionObserver: NSObjectProtocol?
+    private var endObserver: NSObjectProtocol?
 
     init() {
         configureAudioSession()
@@ -32,6 +33,7 @@ final class PlaybackManager: ObservableObject {
     deinit {
         if let observer = timeObserver { player?.removeTimeObserver(observer) }
         if let observer = interruptionObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }
     }
 
     func play(_ track: Track, replacingQueue: Bool = true) {
@@ -42,12 +44,16 @@ final class PlaybackManager: ObservableObject {
             updateNowPlaying()
             return
         }
-        if replacingQueue { queue = [track] }
+        if replacingQueue { queue = [] }
         currentTrack = track
         notice = nil
         player?.pause()
+        if let observer = endObserver { NotificationCenter.default.removeObserver(observer) }
         let item = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: item)
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in self?.playNext() }
         observePlaybackTime()
         player?.play()
         isPlaying = true
@@ -60,14 +66,12 @@ final class PlaybackManager: ObservableObject {
     }
 
     func playNext() {
-        guard queue.count > 1 else { return }
+        guard !queue.isEmpty else { isPlaying = false; return }
         let next = queue.removeFirst()
-        queue.insert(currentTrack ?? next, at: 0)
         play(next, replacingQueue: false)
     }
 
     func playPrevious() {
-        guard currentTime > 3 else { playNext(); return }
         seek(to: 0)
     }
 
