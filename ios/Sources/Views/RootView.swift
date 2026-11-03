@@ -298,11 +298,13 @@ private struct LibraryScreen: View {
                         Text("Your playlists will appear here.").foregroundColor(.secondary)
                     }
                     ForEach(playlists.playlists) { playlist in
-                        HStack {
-                            Image(systemName: "music.note.list")
-                            Text(playlist.name)
-                            Spacer()
-                            Text("\(playlist.trackIDs.count)").foregroundColor(.secondary)
+                        NavigationLink(destination: PlaylistDetailScreen(playlist: playlist)) {
+                            HStack {
+                                Image(systemName: "music.note.list")
+                                Text(playlist.name)
+                                Spacer()
+                                Text("\(playlist.tracks.count)").foregroundColor(.secondary)
+                            }
                         }
                     }
                     .onDelete { offsets in
@@ -339,6 +341,23 @@ private struct LibraryScreen: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+    }
+}
+
+private struct PlaylistDetailScreen: View {
+    @EnvironmentObject private var playback: PlaybackManager
+    let playlist: Playlist
+
+    var body: some View {
+        List {
+            Section(header: Text("\(playlist.tracks.count) songs")) {
+                ForEach(playlist.tracks) { track in
+                    TrackRow(track: track, action: { playback.play(track) },
+                             secondaryAction: { playback.addToQueue(track) })
+                }
+            }
+        }
+        .navigationTitle(playlist.name)
     }
 }
 
