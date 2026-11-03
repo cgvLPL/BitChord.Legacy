@@ -180,7 +180,7 @@ private struct YouTubeMusicWebView: UIViewRepresentable {
                 webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
                     let accepted = cookies.filter {
                         let domain = $0.domain.lowercased()
-                        return domain.contains("youtube.com") || domain.contains("google.com")
+                        return domain == "youtube.com" || domain.hasSuffix(".youtube.com")
                     }
                     let cookieHeader = accepted.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
                     let hasSAPISID = accepted.contains {
