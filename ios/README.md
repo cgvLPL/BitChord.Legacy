@@ -1,17 +1,18 @@
 # BitChord for iOS 15+
 
-This directory contains the native Apple-platform implementation. The Android application at the repository root is intentionally unchanged.
+This is a native Swift implementation alongside the original Android/Kotlin project. The Android application and repository root are not modified by this port.
 
-## Compatibility target
+## Compatibility
 
 - Minimum deployment target: iOS 15.0
-- UI: SwiftUI APIs available on iOS 15
-- Audio: AVFoundation
-- Lock Screen / Control Centre metadata and transport: MediaPlayer
+- UI: SwiftUI, using iOS 15-compatible APIs
+- Audio playback: AVPlayer / AVFoundation
+- Background audio and Lock Screen / Control Centre transport: AVAudioSession and MediaPlayer
+- Build generation: XcodeGen
 
-## Generate and open the Xcode project
+## Build
 
-Install Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen), then run:
+Requirements: macOS, Xcode, and XcodeGen.
 
 ```sh
 cd ios
@@ -19,19 +20,38 @@ xcodegen generate
 open BitChord.xcodeproj
 ```
 
-Select the BitChord scheme and an iOS 15.0+ simulator or device.
+Then select the BitChord scheme and an iOS 15.0+ simulator or device. A GitHub Actions workflow at `.github/workflows/ios.yml` generates the project and runs a simulator build/test on macOS.
 
-## Current implementation status
+## Implemented in this branch
 
-The initial foundation includes:
-- A native SwiftUI app shell with Library, Search, and Settings tabs.
-- A reusable track model and sample library for UI development.
-- An AVPlayer-backed playback manager.
-- Background audio session configuration and Now Playing / remote transport command integration.
-- A compact player and expanded now-playing screen.
+- Native app shell with Home, Explore, Search, Library and Settings.
+- iOS 15-compatible SwiftUI layouts and track artwork loading.
+- YouTube Music public web search request/parser (best-effort; YouTube can change or restrict this unofficial endpoint).
+- Compatible addon source search and direct-stream resolution using the upstream addon protocol's `/search?q=` and `/stream/{id}` endpoints.
+- AVPlayer playback for tracks with direct stream URLs.
+- Audio background mode, interruption handling, Lock Screen metadata and remote play/pause/next/previous/seek commands.
+- Playback queue and end-of-track advancement.
+- LRCLIB synced-lyrics lookup and current-line highlighting.
+- Local playlist persistence.
+- Direct-URL downloads into the app's Documents directory.
+- Basic unit tests for the queue model.
 
-This is a foundation, not a feature-complete port. YouTube Music catalog access, authentication, provider/module integration, lyrics synchronization, downloads, playlist persistence, and advanced audio processing still need to be implemented and tested independently. The supplied iOS 17+ IPA is a behavioral and visual reference; compiled IPA contents do not provide editable Swift source.
+## Important limitations / next integration work
+
+This is an actively developing port, not yet a feature-complete or release-ready replacement for the iOS 17+ app.
+
+- YouTube Music search results are metadata only. The iOS app does **not** yet resolve YouTube audio streams. The upstream Android implementation depends on InnerTube client/cipher extraction, player configuration, proof-of-origin tokens and fallback extractors; that platform-specific extraction stack has not been ported. Search results currently offer an Open in YouTube Music fallback.
+- Google / YouTube account authentication and cookie/session management are not implemented. Do not enter Google passwords or paste private session cookies into arbitrary endpoints.
+- Addon support currently expects a compatible server to return direct stream URLs. It does not yet implement the full manifest settings negotiation, download policy, health checks, quality tiers, or request-header handling from the Android implementation.
+- Lyrics currently use LRCLIB only; multiple-provider priority, translations, word timing and source settings remain to be ported.
+- Downloads currently save direct stream URLs only. Resume, cache management, metadata/tag writing and source-specific download permissions remain outstanding.
+- The reference app's widget, share extension, CarPlay, listen-together, Discord, Spotify, Last.fm/ListenBrainz, Replay, audio visualisation, advanced equalizer, crossfade, gapless playback, Automix, bit-perfect USB output and local/network media library are not yet implemented.
+- No iOS build has been run in this Linux environment. The macOS CI workflow is included to perform the first real Xcode compile and report compiler or deployment-target issues.
+
+## Reference IPA
+
+The supplied 1.0.1 build is used as a behavioral and feature reference. Its README and bundle metadata were inspected. An IPA contains compiled binaries and assets, not the original editable Swift source, so this project reimplements the app's behavior rather than extracting the original project.
 
 ## Licensing
 
-BitChord is GPL-3.0. Keep the upstream license and attribution notices with this project, and ensure any redistributed binaries are accompanied by the corresponding source as required by the license.
+The upstream project is GPL-3.0. Keep its license and attribution notices. Any redistributed binary must be accompanied by the corresponding source as required by the license.

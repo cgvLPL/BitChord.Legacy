@@ -8,19 +8,31 @@ settings:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "15.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    GENERATE_INFOPLIST_FILE: YES
-    INFOPLIST_KEY_CFBundleDisplayName: BitChord
-    INFOPLIST_KEY_UIBackgroundModes: "audio"
-    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
 targets:
   BitChord:
     type: application
     platform: iOS
     sources:
       - path: Sources
+    info:
+      path: Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bitchord.ios
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "BitChord does not require microphone access for basic playback."
+        INFOPLIST_KEY_CFBundleDisplayName: BitChord
     scheme:
-      gatherCoverageData: false
+      testTargets:
+        - BitChordTests
+  BitChordTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: BitChord
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bitchord.ios.tests
+        GENERATE_INFOPLIST_FILE: YES

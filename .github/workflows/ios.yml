@@ -1,0 +1,28 @@
+name: iOS compatibility
+
+on:
+  push:
+    branches:
+      - ios/ios15-port
+  pull_request:
+    branches:
+      - ios/ios15-port
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild             -project ios/BitChord.xcodeproj             -scheme BitChord             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
+      - name: Run unit tests
+        run: |
+          xcodebuild             -project ios/BitChord.xcodeproj             -scheme BitChord             -destination 'platform=iOS Simulator,name=iPhone 16'             CODE_SIGNING_ALLOWED=NO             test
