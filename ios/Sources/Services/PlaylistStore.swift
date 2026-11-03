@@ -16,8 +16,8 @@ final class PlaylistStore: ObservableObject {
 
     func add(_ track: Track, to playlistID: UUID) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistID }),
-              !playlists[index].trackIDs.contains(track.id) else { return }
-        playlists[index].trackIDs.append(track.id)
+              !playlists[index].tracks.contains(where: { $0.id == track.id }) else { return }
+        playlists[index].tracks.append(track)
         save()
     }
 
