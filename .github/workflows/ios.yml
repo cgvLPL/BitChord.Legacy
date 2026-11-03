@@ -1,5 +1,10 @@
 name: iOS compatibility
 
+# Keep only the newest branch build so stale queued runs do not pile up.
+concurrency:
+  group: ios15-port-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
