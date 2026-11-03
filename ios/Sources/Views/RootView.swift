@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import ImageIO
 
 struct RootView: View {
     @EnvironmentObject private var playback: PlaybackManager
@@ -612,13 +614,17 @@ private final class ArtworkImageLoader: ObservableObject {
         guard let url = url else { return }
         if let cached = Self.cache.object(forKey: url as NSURL) { image = cached; return }
         task = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-            guard let data = data, let source = UIImage(data: data), let cgImage = source.cgImage else { return }
-            let maxDimension: CGFloat = 320
-            let scale = min(1, maxDimension / CGFloat(max(cgImage.width, cgImage.height)))
-            let size = CGSize(width: CGFloat(cgImage.width) * scale, height: CGFloat(cgImage.height) * scale)
-            let renderer = UIGraphicsImageRenderer(size: size)
-            let thumbnail = renderer.image { _ in source.draw(in: CGRect(origin: .zero, size: size)) }
-            Self.cache.setObject(thumbnail, forKey: url as NSURL, cost: Int(size.width * size.height * 4))
+            guard let data = data,
+                  let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let cgImage = CGImageSourceCreateThumbnailAtIndex(
+                    source, 0,
+                    [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                     kCGImageSourceCreateThumbnailWithTransform: true,
+                     kCGImageSourceThumbnailMaxPixelSize: 320] as CFDictionary
+                  ) else { return }
+            let thumbnail = UIImage(cgImage: cgImage)
+            let cost = cgImage.bytesPerRow * cgImage.height
+            Self.cache.setObject(thumbnail, forKey: url as NSURL, cost: cost)
             DispatchQueue.main.async { self?.image = thumbnail }
         }
         task?.resume()
