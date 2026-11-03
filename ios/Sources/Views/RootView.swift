@@ -89,7 +89,7 @@ private struct HomeScreen: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 24) {
                     HStack {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("BITCHORD").font(.caption.bold()).tracking(3).foregroundColor(.white.opacity(0.55))
@@ -117,7 +117,7 @@ private struct HomeScreen: View {
                     Text("Connect a compatible music source in Settings to search and play catalogue results.")
                         .font(.footnote).foregroundColor(.white.opacity(0.45))
                 }
-                .padding(16)
+                .padding(20)
             }
             .navigationBarHidden(true)
         }
@@ -682,8 +682,7 @@ private struct NowPlayingScreen: View {
     @State private var lyricsMessage = "Lyrics have not been loaded."
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
+        VStack(spacing: 20) {
             HStack {
                 Button("Done") { presentationMode.wrappedValue.dismiss() }
                 Spacer()
@@ -692,9 +691,9 @@ private struct NowPlayingScreen: View {
                 Button { } label: { Image(systemName: "ellipsis").frame(width: 40) }
             }.padding(.top, 20)
 
-            ArtworkView(url: playback.currentTrack?.artworkURL,
-                        size: min(260, UIScreen.main.bounds.width - 72))
-                .background(Color.white.opacity(0.06)).cornerRadius(18)
+            ArtworkView(url: playback.currentTrack?.artworkURL)
+                .frame(maxWidth: 320).aspectRatio(1, contentMode: .fit)
+                .background(Color.white.opacity(0.06)).cornerRadius(20)
                 .frame(maxWidth: .infinity)
 
             VStack(spacing: 6) {
@@ -742,10 +741,9 @@ private struct NowPlayingScreen: View {
                 }
                 .frame(maxHeight: 150)
             }
-            }
-            .padding(.bottom, 16)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 22)
         .background(Color(red: 0.035, green: 0.035, blue: 0.045).ignoresSafeArea())
         .foregroundColor(.white)
     }
