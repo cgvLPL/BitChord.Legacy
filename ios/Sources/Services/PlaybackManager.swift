@@ -59,7 +59,7 @@ final class PlaybackManager: ObservableObject {
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in self?.playNext() }
         observePlaybackTime()
-        player?.play()
+        player?.playImmediately(atRate: Float(playbackSpeed))
         isPlaying = true
         updateNowPlaying()
     }
