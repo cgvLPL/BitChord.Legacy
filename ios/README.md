@@ -5,6 +5,7 @@ This is a native Swift implementation alongside the original Android/Kotlin proj
 ## Compatibility
 
 - Minimum deployment target: iOS 15.0
+- Optimised target device: iPhone 7 and newer, including compact 4.7-inch layouts and memory-conscious artwork handling
 - UI: SwiftUI, using iOS 15-compatible APIs
 - Audio playback: AVPlayer / AVFoundation
 - Background audio and Lock Screen / Control Centre transport: AVAudioSession and MediaPlayer
@@ -25,7 +26,7 @@ Then select the BitChord scheme and an iOS 15.0+ simulator or device. A GitHub A
 ## Implemented in this branch
 
 - Native app shell with Home, Explore, Search, Library and Settings.
-- iOS 15-compatible SwiftUI layouts and track artwork loading.
+- iOS 15-compatible SwiftUI layouts, compact iPhone 7 player/search layouts, and cached/downsampled artwork thumbnails.
 - YouTube Music public web search request/parser (best-effort; YouTube can change or restrict this unofficial endpoint).
 - Local YouTube audio extraction through [YouTubeKit](https://github.com/alexeichhorn/YouTubeKit), selecting native-playable M4A audio streams. Remote extraction fallback is deliberately disabled.
 - Compatible addon source search and on-demand direct-stream resolution using the upstream addon protocol's `/search?q=` and `/stream/{id}` endpoints.
