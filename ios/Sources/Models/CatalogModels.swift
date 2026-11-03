@@ -14,13 +14,15 @@ struct LyricLine: Identifiable, Decodable {
 struct Playlist: Identifiable, Codable {
     var id: UUID
     var name: String
-    var trackIDs: [String]
+    var tracks: [Track]
     var createdAt: Date
+
+    var trackIDs: [String] { tracks.map { $0.id } }
 
     init(name: String) {
         self.id = UUID()
         self.name = name
-        self.trackIDs = []
+        self.tracks = []
         self.createdAt = Date()
     }
 }
