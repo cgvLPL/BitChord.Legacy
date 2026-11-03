@@ -49,7 +49,7 @@ struct YouTubeMusicLibrarySnapshot: Codable {
     var albums: [YouTubeMusicLibraryCollection] = []
     var artists: [YouTubeMusicLibraryCollection] = []
     var syncedAt: Date?
-    var syncWarnings: [String] = []
+    var syncWarnings: [String]? = nil
 }
 
 private struct YouTubeMusicLibraryFeed {
