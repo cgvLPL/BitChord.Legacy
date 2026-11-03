@@ -168,7 +168,9 @@ private struct SearchScreen: View {
                         ForEach(results) { track in
                             TrackRow(track: track, action: {
                                 play(track)
-                            }, secondaryAction: { playback.addToQueue(track) },
+                            }, secondaryAction: {
+                                Task { await enqueue(track) }
+                               },
                                downloadAction: {
                                    Task {
                                        await download(track)
@@ -212,6 +214,36 @@ private struct SearchScreen: View {
         results = combined
         if combined.isEmpty && errorMessage == nil { errorMessage = "No results found." }
         isSearching = false
+    }
+
+    @MainActor
+    private func enqueue(_ track: Track) async {
+        do {
+            var queued = track
+            if queued.streamURL == nil, let id = track.providerID {
+                let stream: URL?
+                if track.provider == "addon" {
+                    let addon = try AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality)
+                    stream = try await addon.streamURL(trackID: id)
+                } else if track.provider == "youtube" {
+                    stream = try await YouTubeAudioResolver().resolve(videoID: id)
+                } else {
+                    stream = nil
+                }
+                if let stream = stream {
+                    queued = Track(id: track.id, title: track.title, artist: track.artist,
+                                   album: track.album, artworkURL: track.artworkURL,
+                                   streamURL: stream, provider: track.provider, providerID: id)
+                }
+            }
+            guard queued.streamURL != nil else {
+                playback.notice = CatalogError.noPlayableStream.localizedDescription
+                return
+            }
+            playback.addToQueue(queued)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     @MainActor
