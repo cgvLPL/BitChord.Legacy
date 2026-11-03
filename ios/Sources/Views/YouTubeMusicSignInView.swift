@@ -164,10 +164,12 @@ private struct YouTubeMusicWebView: UIViewRepresentable {
                   var value = window.ytcfg.get(key);
                   return (value === undefined || value === null || value === '') ? null : String(value);
                 };
+                var delegated = get('DELEGATED_SESSION_ID');
+                var dataSync = get('DATASYNC_ID');
                 return {
                   loggedIn: !!window.ytcfg.get('LOGGED_IN'),
-                  pageId: get('DELEGATED_SESSION_ID'),
-                  dataSyncId: get('DATASYNC_ID'),
+                  pageId: delegated || (dataSync ? dataSync.split('||')[0] : null),
+                  dataSyncId: dataSync,
                   authUser: get('SESSION_INDEX'),
                   visitorData: get('VISITOR_DATA'),
                   clientVersion: get('INNERTUBE_CLIENT_VERSION')
