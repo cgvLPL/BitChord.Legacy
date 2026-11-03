@@ -87,6 +87,9 @@ final class YouTubeMusicAuthStore: ObservableObject {
             return hash.map { String(format: "%02x", $0) }.joined()
         } ?? ""
         request.setValue("SAPISIDHASH \(timestamp)_\(digest)", forHTTPHeaderField: "Authorization")
+        request.setValue("67", forHTTPHeaderField: "X-YouTube-Client-Name")
+        request.setValue(account.clientVersion ?? "1.20250101.01.00", forHTTPHeaderField: "X-YouTube-Client-Version")
+        request.setValue(origin, forHTTPHeaderField: "X-Origin")
         request.setValue(account.cookieHeader, forHTTPHeaderField: "Cookie")
         request.setValue(account.authUser, forHTTPHeaderField: "X-Goog-AuthUser")
         if let pageID = account.pageID, !pageID.isEmpty {
