@@ -87,6 +87,13 @@ private struct HomeScreen: View {
     }
 }
 
+private struct ExploreTile: Identifiable {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    var id: String { title }
+}
+
 private struct ExploreScreen: View {
     var body: some View {
         NavigationView {
@@ -96,17 +103,17 @@ private struct ExploreScreen: View {
                     Text("Find something for the moment.")
                         .foregroundColor(.white.opacity(0.55))
                     ForEach([
-                        ("Late night", "Slow down with atmospheric sounds", "moon.stars.fill"),
-                        ("Focus", "Keep your attention on the task", "sparkle"),
-                        ("Discover", "Find music beyond your rotation", "safari.fill"),
-                        ("Recently added", "Return to new releases", "plus.circle.fill")
-                    ], id: \.0) { item in
+                        ExploreTile(title: "Late night", subtitle: "Slow down with atmospheric sounds", symbol: "moon.stars.fill"),
+                        ExploreTile(title: "Focus", subtitle: "Keep your attention on the task", symbol: "sparkle"),
+                        ExploreTile(title: "Discover", subtitle: "Find music beyond your rotation", symbol: "safari.fill"),
+                        ExploreTile(title: "Recently added", subtitle: "Return to new releases", symbol: "plus.circle.fill")
+                    ]) { item in
                         HStack(spacing: 14) {
-                            Image(systemName: item.2).font(.title2).frame(width: 52, height: 52)
+                            Image(systemName: item.symbol).font(.title2).frame(width: 52, height: 52)
                                 .background(Color.white.opacity(0.08)).cornerRadius(12)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(item.0).font(.headline)
-                                Text(item.1).font(.caption).foregroundColor(.white.opacity(0.55))
+                                Text(item.title).font(.headline)
+                                Text(item.subtitle).font(.caption).foregroundColor(.white.opacity(0.55))
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption).foregroundColor(.white.opacity(0.4))
