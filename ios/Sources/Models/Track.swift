@@ -1,6 +1,6 @@
 import Foundation
 
-struct Track: Identifiable, Equatable {
+struct Track: Identifiable, Equatable, Codable {
     let id: String
     let title: String
     let artist: String
