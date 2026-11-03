@@ -196,19 +196,40 @@ private struct SearchScreen: View {
         isSearching = true
         errorMessage = nil
         results = []
+
+        var combined: [Track] = []
         do {
-            let youtube = try await YouTubeMusicCatalog().search(term)
-            var combined = youtube
-            if !settings.addonBaseURL.isEmpty,
-               let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality) {
-                if let addonResults = try? await addon.search(term) { combined = addonResults + youtube }
-            }
-            results = combined
-            if combined.isEmpty { errorMessage = "No results found." }
+            combined = try await YouTubeMusicCatalog().search(term)
         } catch {
             errorMessage = error.localizedDescription
         }
+
+        if !settings.addonBaseURL.isEmpty,
+           let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality) {
+            if let addonResults = try? await addon.search(term) { combined = addonResults + combined }
+        }
+
+        results = combined
+        if combined.isEmpty && errorMessage == nil { errorMessage = "No results found." }
         isSearching = false
+    }
+
+    @MainActor
+    private func download(_ track: Track) async {
+        do {
+            var downloadable = track
+            if downloadable.streamURL == nil, track.provider == "addon",
+               let id = track.providerID,
+               let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality),
+               let stream = try await addon.streamURL(trackID: id) {
+                downloadable = Track(id: track.id, title: track.title, artist: track.artist,
+                                      album: track.album, artworkURL: track.artworkURL,
+                                      streamURL: stream, provider: track.provider, providerID: id)
+            }
+            try await downloads.download(downloadable)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func play(_ track: Track) {
