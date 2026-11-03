@@ -406,7 +406,7 @@ private struct LibraryScreen: View {
                         if musicLibrary.snapshot.likedTracks.isEmpty {
                             Text("No liked songs found.").foregroundColor(.secondary)
                         }
-                        ForEach(Array(musicLibrary.snapshot.likedTracks.prefix(30))) { track in
+                        ForEach(Array(musicLibrary.snapshot.likedTracks)) { track in
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
@@ -414,7 +414,7 @@ private struct LibraryScreen: View {
                         if musicLibrary.snapshot.savedTracks.isEmpty {
                             Text("No separately saved songs found.").foregroundColor(.secondary)
                         }
-                        ForEach(Array(musicLibrary.snapshot.savedTracks.prefix(30))) { track in
+                        ForEach(Array(musicLibrary.snapshot.savedTracks)) { track in
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
@@ -467,7 +467,7 @@ private struct LibraryScreen: View {
                         }
                     }
                     Section(header: Text("Recently Played (\(musicLibrary.snapshot.recentlyPlayed.count))")) {
-                        ForEach(Array(musicLibrary.snapshot.recentlyPlayed.prefix(20))) { track in
+                        ForEach(Array(musicLibrary.snapshot.recentlyPlayed)) { track in
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
