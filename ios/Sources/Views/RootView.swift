@@ -11,14 +11,7 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Color(red: 0.035, green: 0.035, blue: 0.045).ignoresSafeArea()
-            TabView(selection: $selectedTab) {
-                HomeScreen(showingPlayer: $showingPlayer).tabItem { Label("Home", systemImage: "house.fill") }.tag(0)
-                ExploreScreen().tabItem { Label("Explore", systemImage: "safari") }.tag(1)
-                SearchScreen(showingPlayer: $showingPlayer).tabItem { Label("Search", systemImage: "magnifyingglass") }.tag(2)
-                LibraryScreen(showingPlayer: $showingPlayer).tabItem { Label("Library", systemImage: "square.stack") }.tag(3)
-                SettingsScreen(downloads: downloads).tabItem { Label("Settings", systemImage: "slider.horizontal.3") }.tag(4)
-            }
-            .tint(.white)
+            tabContent
             if playback.currentTrack != nil {
                 MiniPlayer(showingPlayer: $showingPlayer)
                     .padding(.horizontal, 12)
@@ -35,6 +28,49 @@ struct RootView: View {
         )) { notice in
             Alert(title: Text("BitChord"), message: Text(notice.message), dismissButton: .default(Text("OK")))
         }
+    }
+
+    // Keep each tab as a separate view expression so Swift 5's type checker
+    // does not have to infer the entire tab hierarchy as one large expression.
+    private var tabContent: some View {
+        TabView(selection: $selectedTab) {
+            homeTab
+            exploreTab
+            searchTab
+            libraryTab
+            settingsTab
+        }
+        .tint(.white)
+    }
+
+    private var homeTab: some View {
+        HomeScreen(showingPlayer: $showingPlayer)
+            .tabItem { Label("Home", systemImage: "house.fill") }
+            .tag(0)
+    }
+
+    private var exploreTab: some View {
+        ExploreScreen()
+            .tabItem { Label("Explore", systemImage: "safari") }
+            .tag(1)
+    }
+
+    private var searchTab: some View {
+        SearchScreen(showingPlayer: $showingPlayer)
+            .tabItem { Label("Search", systemImage: "magnifyingglass") }
+            .tag(2)
+    }
+
+    private var libraryTab: some View {
+        LibraryScreen(showingPlayer: $showingPlayer)
+            .tabItem { Label("Library", systemImage: "square.stack") }
+            .tag(3)
+    }
+
+    private var settingsTab: some View {
+        SettingsScreen(downloads: downloads)
+            .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+            .tag(4)
     }
 }
 
