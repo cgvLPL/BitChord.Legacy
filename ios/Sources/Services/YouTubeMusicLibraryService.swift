@@ -179,9 +179,9 @@ final class YouTubeMusicLibraryService {
     private func parse(_ value: Any, kind: YouTubeMusicLibraryKind?) -> YouTubeMusicLibraryFeed {
         var feed = YouTubeMusicLibraryFeed()
         walk(value) { dictionary in
-            if let renderer = dictionary["musicResponsiveListItemRenderer"] as? [String: Any],
-               let track = parseTrack(renderer) {
-                feed.tracks.append(track)
+            if let renderer = dictionary["musicResponsiveListItemRenderer"] as? [String: Any] {
+                if let track = parseTrack(renderer) { feed.tracks.append(track) }
+                if let collection = parseCollection(renderer, kind: kind) { feed.collections.append(collection) }
             }
             if let renderer = dictionary["musicTwoRowItemRenderer"] as? [String: Any],
                let collection = parseCollection(renderer, kind: kind) {
@@ -211,10 +211,16 @@ final class YouTubeMusicLibraryService {
     }
 
     private func parseCollection(_ renderer: [String: Any], kind: YouTubeMusicLibraryKind?) -> YouTubeMusicLibraryCollection? {
-        guard let kind = kind,
-              let title = textValue(renderer["title"]), !title.isEmpty,
-              let browseID = findBrowseID(in: renderer) else { return nil }
-        let subtitle = textValue(renderer["subtitle"]) ?? textValue(renderer["subtitleText"]) ?? ""
+        guard let kind = kind, let browseID = findBrowseID(in: renderer) else { return nil }
+        let columns = renderer["flexColumns"] as? [[String: Any]] ?? []
+        let columnTitle = columns.first
+            .flatMap { $0["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any] }
+            .flatMap { textValue($0["text"]) }
+        guard let title = textValue(renderer["title"]) ?? columnTitle, !title.isEmpty else { return nil }
+        let columnSubtitle = columns.dropFirst().first
+            .flatMap { $0["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any] }
+            .flatMap { textValue($0["text"]) }
+        let subtitle = textValue(renderer["subtitle"]) ?? textValue(renderer["subtitleText"]) ?? columnSubtitle ?? ""
         return YouTubeMusicLibraryCollection(id: browseID, title: title, subtitle: subtitle,
                                              artworkURL: thumbnailURL(in: renderer), kind: kind)
     }
@@ -267,11 +273,18 @@ final class YouTubeMusicLibraryService {
         walk(value) { dictionary in
             guard found == nil else { return }
             if let item = dictionary["continuationItemRenderer"] as? [String: Any],
-               let endpoint = item["continuationEndpoint"] as? [String: Any],
-               let command = endpoint["continuationCommand"] as? [String: Any],
-               let token = command["token"] as? String {
-                found = token
-                return
+               let endpoint = item["continuationEndpoint"] as? [String: Any] {
+                if let command = endpoint["continuationCommand"] as? [String: Any],
+                   let token = command["token"] as? String {
+                    found = token
+                    return
+                }
+                if let executor = endpoint["commandExecutorCommand"] as? [String: Any],
+                   let commands = executor["commands"] as? [[String: Any]],
+                   let token = commands.compactMap({ ($0["continuationCommand"] as? [String: Any])?["token"] as? String }).first {
+                    found = token
+                    return
+                }
             }
             for key in ["nextContinuationData", "reloadContinuationData"] {
                 if let data = dictionary[key] as? [String: Any], let token = data["continuation"] as? String {
