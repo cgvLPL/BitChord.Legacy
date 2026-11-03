@@ -49,12 +49,18 @@ struct YouTubeMusicLibrarySnapshot: Codable {
     var albums: [YouTubeMusicLibraryCollection] = []
     var artists: [YouTubeMusicLibraryCollection] = []
     var syncedAt: Date?
+    var syncWarnings: [String] = []
 }
 
 private struct YouTubeMusicLibraryFeed {
     var tracks: [Track] = []
     var collections: [YouTubeMusicLibraryCollection] = []
     var continuation: String?
+}
+
+private struct YouTubeMusicLibraryFeedResult {
+    let feed: YouTubeMusicLibraryFeed?
+    let warning: String?
 }
 
 final class YouTubeMusicLibraryService {
@@ -72,44 +78,47 @@ final class YouTubeMusicLibraryService {
             throw YouTubeMusicLibraryError.notSignedIn
         }
 
-        async let liked = safeFeed("VLLM", kind: nil)
-        async let saved = safeFeed("FEmusic_liked_videos", kind: nil)
-        async let history = safeFeed("FEmusic_history", kind: nil)
-        async let playlists = safeFeed("FEmusic_liked_playlists", kind: .playlist)
-        async let albums = safeFeed("FEmusic_liked_albums", kind: .album)
-        async let artists = safeFeed("FEmusic_library_corpus_track_artists", kind: .artist)
+        async let liked = safeFeed("Liked Music", browseID: "VLLM", kind: nil)
+        async let saved = safeFeed("Saved songs", browseID: "FEmusic_liked_videos", kind: nil)
+        async let history = safeFeed("Listening history", browseID: "FEmusic_history", kind: nil)
+        async let playlists = safeFeed("Playlists", browseID: "FEmusic_liked_playlists", kind: .playlist)
+        async let albums = safeFeed("Albums", browseID: "FEmusic_liked_albums", kind: .album)
+        async let artists = safeFeed("Artists", browseID: "FEmusic_library_corpus_track_artists", kind: .artist)
 
         let results = await (liked, saved, history, playlists, albums, artists)
-        let available = [results.0, results.1, results.2, results.3, results.4, results.5].compactMap { $0 }
+        let available = [results.0.feed, results.1.feed, results.2.feed, results.3.feed, results.4.feed, results.5.feed].compactMap { $0 }
         guard !available.isEmpty else { throw YouTubeMusicLibraryError.noFeedsAvailable }
 
         return YouTubeMusicLibrarySnapshot(
-            likedTracks: results.0?.tracks ?? [],
-            savedTracks: results.1?.tracks ?? [],
-            recentlyPlayed: results.2?.tracks ?? [],
-            playlists: results.3?.collections ?? [],
-            albums: results.4?.collections ?? [],
-            artists: results.5?.collections ?? [],
-            syncedAt: Date()
+            likedTracks: results.0.feed?.tracks ?? [],
+            savedTracks: results.1.feed?.tracks ?? [],
+            recentlyPlayed: results.2.feed?.tracks ?? [],
+            playlists: results.3.feed?.collections ?? [],
+            albums: results.4.feed?.collections ?? [],
+            artists: results.5.feed?.collections ?? [],
+            syncedAt: Date(),
+            syncWarnings: [results.0.warning, results.1.warning, results.2.warning,
+                           results.3.warning, results.4.warning, results.5.warning].compactMap { $0 }
         )
     }
 
-    private func safeFeed(_ browseID: String, kind: YouTubeMusicLibraryKind?) async -> YouTubeMusicLibraryFeed? {
-        try? await fetchFeed(browseID, kind: kind)
+    private func safeFeed(_ name: String, browseID: String, kind: YouTubeMusicLibraryKind?) async -> YouTubeMusicLibraryFeedResult {
+        do {
+            return YouTubeMusicLibraryFeedResult(feed: try await fetchFeed(browseID, kind: kind), warning: nil)
+        } catch {
+            return YouTubeMusicLibraryFeedResult(feed: nil, warning: "\\(name): \\(error.localizedDescription)")
+        }
     }
 
     private func fetchFeed(_ browseID: String, kind: YouTubeMusicLibraryKind?) async throws -> YouTubeMusicLibraryFeed {
         var response = try await browse(["browseId": browseID])
         var output = YouTubeMusicLibraryFeed()
         var seenTokens = Set<String>()
-        var page = 0
-
-        while page < 25 {
+        while true {
             let parsed = parse(response, kind: kind)
             output.tracks.append(contentsOf: parsed.tracks)
             output.collections.append(contentsOf: parsed.collections)
             guard let token = parsed.continuation, seenTokens.insert(token).inserted else { break }
-            page += 1
             response = try await browse(["continuation": token], continuation: token)
         }
 
