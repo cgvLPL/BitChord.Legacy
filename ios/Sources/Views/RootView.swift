@@ -7,6 +7,7 @@ struct RootView: View {
     @StateObject private var settings = AppSettings()
     @StateObject private var playlists = PlaylistStore()
     @StateObject private var downloads = DownloadManager()
+    @StateObject private var authStore = YouTubeMusicAuthStore()
     @State private var selectedTab = 0
     @State private var showingPlayer = false
 
@@ -23,6 +24,7 @@ struct RootView: View {
         .environmentObject(settings)
         .environmentObject(playlists)
         .environmentObject(downloads)
+        .environmentObject(authStore)
         .sheet(isPresented: $showingPlayer) { NowPlayingScreen() }
         .alert(item: Binding(
             get: { playback.notice.map(NoticeMessage.init) },
@@ -239,7 +241,7 @@ private struct SearchScreen: View {
 
         var combined: [Track] = []
         do {
-            combined = try await YouTubeMusicCatalog().search(term)
+            combined = try await YouTubeMusicCatalog(authStore: authStore).search(term)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -465,8 +467,10 @@ private struct PlaylistDetailScreen: View {
 private struct SettingsScreen: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var playback: PlaybackManager
+    @EnvironmentObject private var authStore: YouTubeMusicAuthStore
     @ObservedObject var downloads: DownloadManager
     @State private var showingDownloads = false
+    @State private var showingYouTubeSignIn = false
 
     var body: some View {
         NavigationView {
@@ -520,10 +524,20 @@ private struct SettingsScreen: View {
                         }
                     }
                 }
-                Section(header: Text("Account")) {
-                    Label("Google / YouTube Music sign-in", systemImage: "person.crop.circle")
-                    Text("Account cookie authentication is not implemented in this iOS 15 foundation. Never paste your Google password or session cookies into an untrusted app.")
-                        .font(.footnote).foregroundColor(.secondary)
+                Section(header: Text("YouTube Music account")) {
+                    if authStore.isSignedIn {
+                        Label("Connected to YouTube Music", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Your Google session is stored in the iOS Keychain on this device.")
+                            .font(.footnote).foregroundColor(.secondary)
+                        Button("Reconnect account") { showingYouTubeSignIn = true }
+                        Button("Sign out", role: .destructive) { authStore.signOut() }
+                    } else {
+                        Label("Not connected", systemImage: "person.crop.circle")
+                        Button("Sign in with Google") { showingYouTubeSignIn = true }
+                        Text("Sign in on Google's official page inside the app. BitChord never asks for or stores your Google password.")
+                            .font(.footnote).foregroundColor(.secondary)
+                    }
                 }
                 Section(header: Text("About")) {
                     HStack { Text("BitChord for iOS"); Spacer(); Text("iOS 15+").foregroundColor(.secondary) }
@@ -532,6 +546,7 @@ private struct SettingsScreen: View {
             }
             .navigationTitle("Settings")
             .sheet(isPresented: $showingDownloads) { DownloadsScreen(downloads: downloads) }
+            .sheet(isPresented: $showingYouTubeSignIn) { YouTubeMusicSignInView(authStore: authStore) }
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }
