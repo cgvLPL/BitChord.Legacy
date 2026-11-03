@@ -15,33 +15,29 @@ struct YouTubeMusicSignInView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                if hasReachedMusic {
-                    VStack(spacing: 14) {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 42)).foregroundColor(.green)
-                        Text("YouTube Music opened").font(.title3.bold())
-                        Text("If you have selected the correct Google account or channel, save this session to BitChord.")
-                            .font(.footnote).multilineTextAlignment(.center).foregroundColor(.secondary)
-                        Button(isSaving ? "Saving…" : "Continue with this account") {
-                            Task { await saveSession() }
+                YouTubeMusicWebView(url: signInURL, onSession: { cookies, values in
+                    cookieHeader = cookies
+                    config = values
+                    hasReachedMusic = true
+                })
+                .overlay(alignment: .bottom) {
+                    if hasReachedMusic {
+                        VStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 34)).foregroundColor(.green)
+                            Text("YouTube Music opened").font(.headline)
+                            Text("Confirm that the correct Google account or channel is active, then continue.")
+                                .font(.footnote).multilineTextAlignment(.center).foregroundColor(.secondary)
+                            Button(isSaving ? "Saving…" : "Continue with this account") {
+                                Task { await saveSession() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(isSaving || cookieHeader.isEmpty)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isSaving || cookieHeader.isEmpty)
+                        .padding(18)
+                        .frame(maxWidth: .infinity)
+                        .background(.regularMaterial)
                     }
-                    .padding(24)
-                    Spacer()
-                    YouTubeMusicWebView(url: signInURL, onSession: { cookies, values in
-                        cookieHeader = cookies
-                        config = values
-                        hasReachedMusic = true
-                    })
-                    .frame(height: 1)
-                } else {
-                    YouTubeMusicWebView(url: signInURL, onSession: { cookies, values in
-                        cookieHeader = cookies
-                        config = values
-                        hasReachedMusic = true
-                    })
-                    .ignoresSafeArea(edges: .bottom)
                 }
                 if let message = message {
                     Text(message).font(.footnote).foregroundColor(.red).padding()
