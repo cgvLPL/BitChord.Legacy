@@ -218,13 +218,21 @@ private struct SearchScreen: View {
     private func download(_ track: Track) async {
         do {
             var downloadable = track
-            if downloadable.streamURL == nil, track.provider == "addon",
-               let id = track.providerID,
-               let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality),
-               let stream = try await addon.streamURL(trackID: id) {
-                downloadable = Track(id: track.id, title: track.title, artist: track.artist,
-                                      album: track.album, artworkURL: track.artworkURL,
-                                      streamURL: stream, provider: track.provider, providerID: id)
+            if downloadable.streamURL == nil, let id = track.providerID {
+                let stream: URL?
+                if track.provider == "addon" {
+                    let addon = try AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality)
+                    stream = try await addon.streamURL(trackID: id)
+                } else if track.provider == "youtube" {
+                    stream = try await YouTubeAudioResolver().resolve(videoID: id)
+                } else {
+                    stream = nil
+                }
+                if let stream = stream {
+                    downloadable = Track(id: track.id, title: track.title, artist: track.artist,
+                                          album: track.album, artworkURL: track.artworkURL,
+                                          streamURL: stream, provider: track.provider, providerID: id)
+                }
             }
             try await downloads.download(downloadable)
         } catch {
@@ -233,24 +241,36 @@ private struct SearchScreen: View {
     }
 
     private func play(_ track: Track) {
-        if track.streamURL != nil { playback.play(track); return }
-        guard track.provider == "addon", let id = track.providerID,
-              let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality) else {
-            openYouTube(track)
+        if let url = track.streamURL {
+            playback.play(track)
+            return
+        }
+        guard let id = track.providerID else {
+            playback.notice = CatalogError.noPlayableStream.localizedDescription
             return
         }
         Task { @MainActor in
             do {
-                guard let stream = try await addon.streamURL(trackID: id) else {
-                    playback.notice = "This addon did not return a playable stream."
+                let stream: URL?
+                if track.provider == "addon" {
+                    let addon = try AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality)
+                    stream = try await addon.streamURL(trackID: id)
+                } else if track.provider == "youtube" {
+                    stream = try await YouTubeAudioResolver().resolve(videoID: id)
+                } else {
+                    stream = nil
+                }
+                guard let stream = stream else {
+                    playback.notice = CatalogError.noPlayableStream.localizedDescription
                     return
                 }
                 let playable = Track(id: track.id, title: track.title, artist: track.artist,
                                      album: track.album, artworkURL: track.artworkURL,
-                                     streamURL: stream, provider: track.provider, providerID: track.providerID)
+                                     streamURL: stream, provider: track.provider, providerID: id)
                 playback.play(playable)
             } catch {
                 playback.notice = error.localizedDescription
+                if track.provider == "youtube" { openYouTube(track) }
             }
         }
     }
