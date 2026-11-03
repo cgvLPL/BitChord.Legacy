@@ -378,18 +378,49 @@ private struct LibraryScreen: View {
 
 private struct PlaylistDetailScreen: View {
     @EnvironmentObject private var playback: PlaybackManager
+    @EnvironmentObject private var settings: AppSettings
     let playlist: Playlist
 
     var body: some View {
         List {
             Section(header: Text("\(playlist.tracks.count) songs")) {
                 ForEach(playlist.tracks) { track in
-                    TrackRow(track: track, action: { playback.play(track) },
-                             secondaryAction: { playback.addToQueue(track) })
+                    TrackRow(track: track, action: { Task { await play(track) } },
+                             secondaryAction: { Task { await enqueue(track) } })
                 }
             }
         }
         .navigationTitle(playlist.name)
+    }
+
+    @MainActor
+    private func resolve(_ track: Track) async throws -> Track {
+        guard track.streamURL == nil, let id = track.providerID else { return track }
+        let stream: URL?
+        if track.provider == "youtube" {
+            stream = try await YouTubeAudioResolver().resolve(videoID: id)
+        } else if track.provider == "addon" {
+            let addon = try AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality)
+            stream = try await addon.streamURL(trackID: id)
+        } else {
+            stream = nil
+        }
+        guard let stream = stream else { throw CatalogError.noPlayableStream }
+        return Track(id: track.id, title: track.title, artist: track.artist,
+                     album: track.album, artworkURL: track.artworkURL,
+                     streamURL: stream, provider: track.provider, providerID: id)
+    }
+
+    @MainActor
+    private func play(_ track: Track) async {
+        do { playback.play(try await resolve(track)) }
+        catch { playback.notice = error.localizedDescription }
+    }
+
+    @MainActor
+    private func enqueue(_ track: Track) async {
+        do { playback.addToQueue(try await resolve(track)) }
+        catch { playback.notice = error.localizedDescription }
     }
 }
 
