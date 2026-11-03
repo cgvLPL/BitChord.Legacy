@@ -1,9 +1,5 @@
 name: iOS compatibility
 
-concurrency:
-  group: ios15-port-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
   workflow_dispatch:
   push:
