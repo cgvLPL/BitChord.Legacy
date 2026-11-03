@@ -87,7 +87,7 @@ private struct HomeScreen: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 18) {
                     HStack {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("BITCHORD").font(.caption.bold()).tracking(3).foregroundColor(.white.opacity(0.55))
@@ -115,7 +115,7 @@ private struct HomeScreen: View {
                     Text("Connect a compatible music source in Settings to search and play catalogue results.")
                         .font(.footnote).foregroundColor(.white.opacity(0.45))
                 }
-                .padding(20)
+                .padding(16)
             }
             .navigationBarHidden(true)
         }
@@ -596,26 +596,50 @@ private struct TrackRow: View {
     }
 }
 
+private final class ArtworkImageLoader: ObservableObject {
+    @Published private(set) var image: UIImage?
+    private static let cache = NSCache<NSURL, UIImage>()
+    private var task: URLSessionDataTask?
+
+    func load(_ url: URL?) {
+        task?.cancel()
+        image = nil
+        guard let url = url else { return }
+        if let cached = Self.cache.object(forKey: url as NSURL) { image = cached; return }
+        task = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let data = data, let source = UIImage(data: data), let cgImage = source.cgImage else { return }
+            let maxDimension: CGFloat = 320
+            let scale = min(1, maxDimension / CGFloat(max(cgImage.width, cgImage.height)))
+            let size = CGSize(width: CGFloat(cgImage.width) * scale, height: CGFloat(cgImage.height) * scale)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            let thumbnail = renderer.image { _ in source.draw(in: CGRect(origin: .zero, size: size)) }
+            Self.cache.setObject(thumbnail, forKey: url as NSURL, cost: Int(size.width * size.height * 4))
+            DispatchQueue.main.async { self?.image = thumbnail }
+        }
+        task?.resume()
+    }
+
+    deinit { task?.cancel() }
+}
+
 private struct ArtworkView: View {
     let url: URL?
+    @StateObject private var loader = ArtworkImageLoader()
     var body: some View {
         Group {
-            if let url = url {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    artworkPlaceholder
-                }
-            } else { artworkPlaceholder }
+            if let image = loader.image { Image(uiImage: image).resizable().scaledToFill() }
+            else { artworkPlaceholder }
         }
-        .frame(width: 54, height: 54).clipShape(RoundedRectangle(cornerRadius: 9))
+        .frame(width: 54, height: 54)
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .onAppear { loader.load(url) }
+        .onChange(of: url) { loader.load($0) }
     }
     private var artworkPlaceholder: some View {
         RoundedRectangle(cornerRadius: 9).fill(Color.white.opacity(0.09))
             .overlay(Image(systemName: "waveform").foregroundColor(.white.opacity(0.65)))
     }
 }
-
 private struct MiniPlayer: View {
     @EnvironmentObject private var playback: PlaybackManager
     @Binding var showingPlayer: Bool
