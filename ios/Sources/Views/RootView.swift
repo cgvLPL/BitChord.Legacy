@@ -344,6 +344,7 @@ private struct LibraryScreen: View {
 
 private struct SettingsScreen: View {
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var playback: PlaybackManager
     @ObservedObject var downloads: DownloadManager
     @State private var showingDownloads = false
 
@@ -362,6 +363,32 @@ private struct SettingsScreen: View {
                         Text("Best available").tag("Best available")
                         Text("High").tag("High")
                         Text("Standard").tag("Standard")
+                    }
+                    Picker("Playback speed", selection: Binding(
+                        get: { playback.playbackSpeed },
+                        set: { playback.setSpeed($0) }
+                    )) {
+                        Text("0.75×").tag(0.75)
+                        Text("1×").tag(1.0)
+                        Text("1.25×").tag(1.25)
+                        Text("1.5×").tag(1.5)
+                        Text("1.75×").tag(1.75)
+                        Text("2×").tag(2.0)
+                    }
+                    if let remaining = playback.sleepTimerRemaining {
+                        HStack {
+                            Text("Sleep timer")
+                            Spacer()
+                            Text("\(remaining / 60):\(String(format: "%02d", remaining % 60))").foregroundColor(.secondary)
+                        }
+                        Button("Cancel sleep timer", role: .destructive) { playback.cancelSleepTimer() }
+                    } else {
+                        Menu("Sleep timer") {
+                            Button("15 minutes") { playback.startSleepTimer(minutes: 15) }
+                            Button("30 minutes") { playback.startSleepTimer(minutes: 30) }
+                            Button("45 minutes") { playback.startSleepTimer(minutes: 45) }
+                            Button("60 minutes") { playback.startSleepTimer(minutes: 60) }
+                        }
                     }
                 }
                 Section(header: Text("Offline library")) {
