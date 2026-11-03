@@ -389,7 +389,7 @@ private struct LibraryScreen: View {
                             }
                         }
                         if let syncedAt = musicLibrary.snapshot.syncedAt {
-                            Text("Last synced \(syncedAt.formatted(date: .abbreviated, time: .shortened))")
+                            Text("Last synced \\(syncedAt.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.footnote).foregroundColor(.secondary)
                         } else {
                             Text("Your YouTube Music library has not been synced yet.")
@@ -399,7 +399,7 @@ private struct LibraryScreen: View {
                             Text(error).font(.footnote).foregroundColor(.orange)
                         }
                     }
-                    Section(header: Text("Liked Music (\(musicLibrary.snapshot.likedTracks.count))")) {
+                    Section(header: Text("Liked Music (\\(musicLibrary.snapshot.likedTracks.count))")) {
                         if musicLibrary.snapshot.likedTracks.isEmpty {
                             Text("No liked songs found.").foregroundColor(.secondary)
                         }
@@ -407,7 +407,7 @@ private struct LibraryScreen: View {
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
-                    Section(header: Text("Saved Songs (\(musicLibrary.snapshot.savedTracks.count))")) {
+                    Section(header: Text("Saved Songs (\\(musicLibrary.snapshot.savedTracks.count))")) {
                         if musicLibrary.snapshot.savedTracks.isEmpty {
                             Text("No separately saved songs found.").foregroundColor(.secondary)
                         }
@@ -415,7 +415,7 @@ private struct LibraryScreen: View {
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
-                    Section(header: Text("Playlists (\(musicLibrary.snapshot.playlists.count))")) {
+                    Section(header: Text("Playlists (\\(musicLibrary.snapshot.playlists.count))")) {
                         if musicLibrary.snapshot.playlists.isEmpty {
                             Text("No saved playlists found.").foregroundColor(.secondary)
                         }
@@ -433,7 +433,7 @@ private struct LibraryScreen: View {
                             }
                         }
                     }
-                    Section(header: Text("Albums (\(musicLibrary.snapshot.albums.count))")) {
+                    Section(header: Text("Albums (\\(musicLibrary.snapshot.albums.count))")) {
                         if musicLibrary.snapshot.albums.isEmpty {
                             Text("No saved albums found.").foregroundColor(.secondary)
                         }
@@ -448,7 +448,7 @@ private struct LibraryScreen: View {
                             }
                         }
                     }
-                    Section(header: Text("Artists (\(musicLibrary.snapshot.artists.count))")) {
+                    Section(header: Text("Artists (\\(musicLibrary.snapshot.artists.count))")) {
                         if musicLibrary.snapshot.artists.isEmpty {
                             Text("No saved artists found.").foregroundColor(.secondary)
                         }
@@ -463,7 +463,7 @@ private struct LibraryScreen: View {
                             }
                         }
                     }
-                    Section(header: Text("Recently Played (\(musicLibrary.snapshot.recentlyPlayed.count))")) {
+                    Section(header: Text("Recently Played (\\(musicLibrary.snapshot.recentlyPlayed.count))")) {
                         ForEach(Array(musicLibrary.snapshot.recentlyPlayed.prefix(20))) { track in
                             TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
@@ -484,7 +484,7 @@ private struct LibraryScreen: View {
                                 Image(systemName: "music.note.list")
                                 Text(playlist.name)
                                 Spacer()
-                                Text("\(playlist.tracks.count)").foregroundColor(.secondary)
+                                Text("\\(playlist.tracks.count)").foregroundColor(.secondary)
                             }
                         }
                     }
@@ -497,14 +497,14 @@ private struct LibraryScreen: View {
                     HStack {
                         Label("Downloaded files", systemImage: "arrow.down.circle")
                         Spacer()
-                        Text("\(downloads.downloadedFiles.count)").foregroundColor(.secondary)
+                        Text("\\(downloads.downloadedFiles.count)").foregroundColor(.secondary)
                     }
                 }
                 Section(header: Text("Queue")) {
                     if playback.queue.isEmpty {
                         Text("Your queue is empty.").foregroundColor(.secondary)
                     }
-                    ForEach(Array(playback.queue.enumerated()), id: \.element.id) { index, track in
+                    ForEach(Array(playback.queue.enumerated()), id: \\.element.id) { _, track in
                         HStack {
                             Text(track.title)
                             Spacer()
@@ -521,6 +521,9 @@ private struct LibraryScreen: View {
                 Button("Cancel", role: .cancel) { newPlaylistName = "" }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear { Task { await musicLibrary.refreshIfNeeded(authStore: authStore) } }
+    }
 
     @MainActor
     private func playLibraryTrack(_ track: Track) async {
@@ -535,13 +538,10 @@ private struct LibraryScreen: View {
             playback.play(playable)
         } catch {
             playback.notice = "Opening this track in YouTube Music because direct playback is unavailable."
-            if let url = URL(string: "https://music.youtube.com/watch?v=\(videoID)") {
+            if let url = URL(string: "https://music.youtube.com/watch?v=\\(videoID)") {
                 UIApplication.shared.open(url)
             }
         }
-    }
-        .navigationViewStyle(StackNavigationViewStyle())
-        .onAppear { Task { await musicLibrary.refreshIfNeeded(authStore: authStore) } }
     }
 }
 
