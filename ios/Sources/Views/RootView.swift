@@ -34,6 +34,7 @@ struct RootView: View {
                 musicLibrary.clear()
             }
         }
+        .onAppear { Task { await musicLibrary.refreshIfNeeded(authStore: authStore) } }
         .sheet(isPresented: $showingPlayer) { NowPlayingScreen() }
         .alert(item: Binding(
             get: { playback.notice.map(NoticeMessage.init) },
