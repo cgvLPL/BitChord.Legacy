@@ -404,12 +404,7 @@ private struct LibraryScreen: View {
                             Text("No liked songs found.").foregroundColor(.secondary)
                         }
                         ForEach(Array(musicLibrary.snapshot.likedTracks.prefix(30))) { track in
-                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(track.title).foregroundColor(.primary)
-                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
-                                }
-                            }
+                            TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
                     Section(header: Text("Saved Songs (\(musicLibrary.snapshot.savedTracks.count))")) {
@@ -417,12 +412,7 @@ private struct LibraryScreen: View {
                             Text("No separately saved songs found.").foregroundColor(.secondary)
                         }
                         ForEach(Array(musicLibrary.snapshot.savedTracks.prefix(30))) { track in
-                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(track.title).foregroundColor(.primary)
-                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
-                                }
-                            }
+                            TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
                     Section(header: Text("Playlists (\(musicLibrary.snapshot.playlists.count))")) {
@@ -475,12 +465,7 @@ private struct LibraryScreen: View {
                     }
                     Section(header: Text("Recently Played (\(musicLibrary.snapshot.recentlyPlayed.count))")) {
                         ForEach(Array(musicLibrary.snapshot.recentlyPlayed.prefix(20))) { track in
-                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(track.title).foregroundColor(.primary)
-                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
-                                }
-                            }
+                            TrackRow(track: track, action: { Task { await playLibraryTrack(track) } })
                         }
                     }
                 } else {
@@ -536,6 +521,25 @@ private struct LibraryScreen: View {
                 Button("Cancel", role: .cancel) { newPlaylistName = "" }
             }
         }
+
+    @MainActor
+    private func playLibraryTrack(_ track: Track) async {
+        let videoID = track.providerID ?? track.id
+        do {
+            guard let streamURL = try await YouTubeAudioResolver().resolve(videoID: videoID) else {
+                throw CatalogError.noPlayableStream
+            }
+            let playable = Track(id: track.id, title: track.title, artist: track.artist,
+                                 album: track.album, artworkURL: track.artworkURL,
+                                 streamURL: streamURL, provider: "youtube", providerID: videoID)
+            playback.play(playable)
+        } catch {
+            playback.notice = "Opening this track in YouTube Music because direct playback is unavailable."
+            if let url = URL(string: "https://music.youtube.com/watch?v=\(videoID)") {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear { Task { await musicLibrary.refreshIfNeeded(authStore: authStore) } }
     }
