@@ -398,6 +398,9 @@ private struct LibraryScreen: View {
                         if let error = musicLibrary.errorMessage {
                             Text(error).font(.footnote).foregroundColor(.orange)
                         }
+                        ForEach(Array(musicLibrary.snapshot.syncWarnings.enumerated()), id: \\.offset) { _, warning in
+                            Text(warning).font(.footnote).foregroundColor(.orange)
+                        }
                     }
                     Section(header: Text("Liked Music (\(musicLibrary.snapshot.likedTracks.count))")) {
                         if musicLibrary.snapshot.likedTracks.isEmpty {
