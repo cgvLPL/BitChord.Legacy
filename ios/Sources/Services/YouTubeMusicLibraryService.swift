@@ -154,19 +154,19 @@ final class YouTubeMusicLibraryService {
         }
         if let url = components?.url { request.url = url }
 
-        let client: [String: Any] = [
+        var client: [String: Any] = [
             "clientName": "WEB_REMIX",
             "clientVersion": account.clientVersion ?? "1.20250101.01.00",
             "hl": Locale.current.languageCode ?? "en",
-            "gl": Locale.current.regionCode ?? "US",
-            "visitorData": account.visitorData as Any? ?? NSNull()
+            "gl": Locale.current.regionCode ?? "US"
         ]
+        if let visitorData = account.visitorData { client["visitorData"] = visitorData }
         var user: [String: Any] = ["lockedSafetyMode": false]
         if let dataSyncID = account.dataSyncID, !dataSyncID.isEmpty {
             user["onBehalfOfUser"] = dataSyncID
         }
         let context: [String: Any] = [
-            "client": client.filter { !($0.value is NSNull) },
+            "client": client,
             "user": user,
             "request": ["useSsl": true]
         ]
@@ -208,12 +208,14 @@ final class YouTubeMusicLibraryService {
             return textValue(flex["text"])
         }), !title.isEmpty, let videoID = findString("videoId", in: renderer) else { return nil }
 
-        let artist = columns.count > 1
+        let artistLine = columns.count > 1
             ? ((columns[1]["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any]).flatMap { textValue($0["text"]) } ?? "Unknown artist")
             : "Unknown artist"
-        let album = columns.count > 2
+        let artist = artistLine.components(separatedBy: " • ").first ?? artistLine
+        let albumLine = columns.count > 2
             ? ((columns[2]["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any]).flatMap { textValue($0["text"]) } ?? "")
             : ""
+        let album = albumLine.components(separatedBy: " • ").first ?? albumLine
         return Track(id: videoID, title: title, artist: artist, album: album,
                      artworkURL: thumbnailURL(in: renderer), streamURL: nil,
                      provider: "youtube", providerID: videoID)
@@ -235,6 +237,7 @@ final class YouTubeMusicLibraryService {
     }
 
     private func textValue(_ value: Any?) -> String? {
+        if let string = value as? String { return string }
         guard let object = value as? [String: Any] else { return nil }
         if let simple = object["simpleText"] as? String { return simple }
         if let runs = object["runs"] as? [[String: Any]] {
