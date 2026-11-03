@@ -37,13 +37,24 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
         request.setValue("https://music.youtube.com/", forHTTPHeaderField: "Referer")
         authStore?.applyAuthentication(to: &request)
+        let account = authStore?.account
+        var client: [String: Any] = [
+            "clientName": "WEB_REMIX",
+            "clientVersion": account?.clientVersion ?? "1.20250101.01.00",
+            "hl": Locale.current.languageCode ?? "en",
+            "gl": Locale.current.regionCode ?? "US"
+        ]
+        if let visitorData = account?.visitorData { client["visitorData"] = visitorData }
+        var user: [String: Any] = ["lockedSafetyMode": false]
+        if let dataSyncID = account?.dataSyncID, !dataSyncID.isEmpty {
+            user["onBehalfOfUser"] = dataSyncID
+        }
         let payload: [String: Any] = [
-            "context": ["client": [
-                "clientName": "WEB_REMIX",
-                "clientVersion": authStore?.account?.clientVersion ?? "1.20250616.01.00",
-                "hl": Locale.current.languageCode ?? "en",
-                "gl": Locale.current.regionCode ?? "US"
-            ]],
+            "context": [
+                "client": client,
+                "user": user,
+                "request": ["useSsl": true]
+            ],
             "query": query
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
