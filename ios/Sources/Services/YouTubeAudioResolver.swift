@@ -13,7 +13,6 @@ final class YouTubeAudioResolver {
             .highestAudioBitrateStream() else {
             throw CatalogError.noPlayableStream
         }
-        try await stream.waitUntilAvailable()
         return stream.url
     }
 }
