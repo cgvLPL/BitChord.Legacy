@@ -201,7 +201,7 @@ private struct SearchScreen: View {
             let youtube = try await YouTubeMusicCatalog().search(term)
             var combined = youtube
             if !settings.addonBaseURL.isEmpty,
-               let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL) {
+               let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality) {
                 if let addonResults = try? await addon.search(term) { combined = addonResults + youtube }
             }
             results = combined
@@ -352,10 +352,18 @@ private struct SettingsScreen: View {
 
 private struct DownloadsScreen: View {
     @ObservedObject var downloads: DownloadManager
+    @EnvironmentObject private var playback: PlaybackManager
     var body: some View {
         NavigationView {
-            List(downloads.downloadedFiles, id: \.absoluteString) { file in
-                Label(file.deletingPathExtension().lastPathComponent, systemImage: "music.note")
+            List {
+                ForEach(downloads.downloadedFiles, id: \.absoluteString) { file in
+                    Button { playback.play(downloads.track(for: file)) } label: {
+                        Label(file.deletingPathExtension().lastPathComponent, systemImage: "music.note")
+                    }
+                }
+                .onDelete { offsets in
+                    offsets.map { downloads.downloadedFiles[$0] }.forEach(downloads.delete)
+                }
             }
             .navigationTitle("Downloads")
         }
