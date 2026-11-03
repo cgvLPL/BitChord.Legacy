@@ -22,9 +22,13 @@ protocol MusicCatalogService {
 
 final class YouTubeMusicCatalog: MusicCatalogService {
     private let session: URLSession
+    private let authStore: YouTubeMusicAuthStore?
     private let endpoint = URL(string: "https://music.youtube.com/youtubei/v1/search?prettyPrint=false")!
 
-    init(session: URLSession = .shared) { self.session = session }
+    init(session: URLSession = .shared, authStore: YouTubeMusicAuthStore? = nil) {
+        self.session = session
+        self.authStore = authStore
+    }
 
     func search(_ query: String) async throws -> [Track] {
         var request = URLRequest(url: endpoint)
@@ -32,6 +36,7 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
         request.setValue("https://music.youtube.com/", forHTTPHeaderField: "Referer")
+        authStore?.applyAuthentication(to: &request)
         let payload: [String: Any] = [
             "context": ["client": [
                 "clientName": "WEB_REMIX",
