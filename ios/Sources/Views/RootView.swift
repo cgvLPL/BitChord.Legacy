@@ -398,7 +398,7 @@ private struct LibraryScreen: View {
                         if let error = musicLibrary.errorMessage {
                             Text(error).font(.footnote).foregroundColor(.orange)
                         }
-                        ForEach(Array(musicLibrary.snapshot.syncWarnings.enumerated()), id: \\.offset) { _, warning in
+                        ForEach(Array((musicLibrary.snapshot.syncWarnings ?? []).enumerated()), id: \\.offset) { _, warning in
                             Text(warning).font(.footnote).foregroundColor(.orange)
                         }
                     }
