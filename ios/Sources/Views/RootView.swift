@@ -134,6 +134,8 @@ private struct ExploreScreen: View {
 private struct SearchScreen: View {
     @EnvironmentObject private var playback: PlaybackManager
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var downloads: DownloadManager
+    @EnvironmentObject private var playlists: PlaylistStore
     @State private var query = ""
     @State private var results: [Track] = []
     @State private var isSearching = false
@@ -167,7 +169,17 @@ private struct SearchScreen: View {
                             TrackRow(track: track, action: {
                                 if track.streamURL != nil { playback.play(track) }
                                 else { openYouTube(track) }
-                            }, secondaryAction: { playback.addToQueue(track) })
+                            }, secondaryAction: { playback.addToQueue(track) },
+                               downloadAction: {
+                                   Task {
+                                       do { try await downloads.download(track) }
+                                       catch { errorMessage = error.localizedDescription }
+                                   }
+                               },
+                               playlistAction: {
+                                   if let playlist = playlists.playlists.first { playlists.add(track, to: playlist.id) }
+                                   else { errorMessage = "Create a playlist in Library first." }
+                               })
                         }
                     }
                 }
@@ -332,6 +344,8 @@ private struct TrackRow: View {
     let track: Track
     let action: () -> Void
     var secondaryAction: (() -> Void)? = nil
+    var downloadAction: (() -> Void)? = nil
+    var playlistAction: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -353,6 +367,17 @@ private struct TrackRow: View {
             }
         }
         .padding(.vertical, 6)
+        .contextMenu {
+            if let downloadAction = downloadAction {
+                Button(action: downloadAction) { Label("Download", systemImage: "arrow.down.circle") }
+            }
+            if let playlistAction = playlistAction {
+                Button(action: playlistAction) { Label("Add to playlist", systemImage: "text.badge.plus") }
+            }
+            if let secondaryAction = secondaryAction {
+                Button(action: secondaryAction) { Label("Add to queue", systemImage: "text.line.first.and.arrowtriangle.forward") }
+            }
+        }
     }
 }
 
