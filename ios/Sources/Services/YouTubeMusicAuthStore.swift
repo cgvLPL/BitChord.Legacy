@@ -8,6 +8,7 @@ struct YouTubeMusicAccount: Codable {
     let sapisid: String
     let authUser: String
     let pageID: String?
+    let dataSyncID: String?
     let visitorData: String?
     let clientVersion: String?
     let loggedIn: Bool
@@ -42,6 +43,7 @@ final class YouTubeMusicAuthStore: ObservableObject {
             sapisid: sapisid,
             authUser: String(describing: config["authUser"] ?? config["SESSION_INDEX"] ?? "0"),
             pageID: (config["pageId"] as? String) ?? (config["DELEGATED_SESSION_ID"] as? String),
+            dataSyncID: (config["dataSyncId"] as? String).flatMap(Self.normalizeDataSyncID) ?? (config["pageId"] as? String),
             visitorData: (config["visitorData"] as? String) ?? (config["VISITOR_DATA"] as? String),
             clientVersion: (config["clientVersion"] as? String) ?? (config["INNERTUBE_CLIENT_VERSION"] as? String),
             loggedIn: (config["loggedIn"] as? Bool) ?? (config["LOGGED_IN"] as? Bool) ?? true,
@@ -95,6 +97,15 @@ final class YouTubeMusicAuthStore: ObservableObject {
         }
         request.setValue(origin, forHTTPHeaderField: "Origin")
         request.setValue(origin + "/", forHTTPHeaderField: "Referer")
+    }
+
+    static func normalizeDataSyncID(_ raw: String?) -> String? {
+        guard let value = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        if value.contains("||") {
+            let pieces = value.components(separatedBy: "||")
+            return pieces.last?.isEmpty == false ? pieces.last : nil
+        }
+        return value
     }
 
     private func load() -> YouTubeMusicAccount? {
