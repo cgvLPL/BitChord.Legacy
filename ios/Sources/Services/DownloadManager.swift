@@ -17,10 +17,22 @@ final class DownloadManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw CatalogError.badResponse
         }
-        let destination = downloadsDirectory().appendingPathComponent(safeFilename(track.title) + ".audio")
+        let fileExtension = url.pathExtension.isEmpty ? "m4a" : url.pathExtension
+        let destination = downloadsDirectory().appendingPathComponent(safeFilename(track.title) + "." + fileExtension)
         if fileManager.fileExists(atPath: destination.path) { try fileManager.removeItem(at: destination) }
         try fileManager.moveItem(at: temporaryURL, to: destination)
         await MainActor.run { self.refresh() }
+    }
+
+    func track(for file: URL) -> Track {
+        Track(id: file.absoluteString, title: file.deletingPathExtension().lastPathComponent,
+              artist: "Downloaded", album: "Offline library", artworkURL: nil,
+              streamURL: file, provider: "local", providerID: nil)
+    }
+
+    func delete(_ file: URL) {
+        try? fileManager.removeItem(at: file)
+        refresh()
     }
 
     func refresh() {
