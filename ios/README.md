@@ -27,7 +27,9 @@ Then select the BitChord scheme and an iOS 15.0+ simulator or device. A GitHub A
 
 - Native app shell with Home, Explore, Search, Library and Settings.
 - iOS 15-compatible SwiftUI layouts, compact iPhone 7 player/search layouts, and cached/downsampled artwork thumbnails.
-- YouTube Music public web search request/parser (best-effort; YouTube can change or restrict this unofficial endpoint).
+- YouTube Music catalogue search using the public InnerTube web endpoint (best-effort; YouTube can change or restrict this unofficial endpoint).
+- Google sign-in through the official YouTube Music redirect flow in a `WKWebView`; the user confirms the active Personal or Brand identity before capture.
+- Session cookies stored in the iOS Keychain, with `SAPISIDHASH`, `X-Goog-AuthUser`, optional `X-Goog-PageId`, visitor data and client-version headers applied to catalogue requests.
 - Local YouTube audio extraction through [YouTubeKit](https://github.com/alexeichhorn/YouTubeKit), selecting native-playable M4A audio streams. Remote extraction fallback is deliberately disabled.
 - Compatible addon source search and on-demand direct-stream resolution using the upstream addon protocol's `/search?q=` and `/stream/{id}` endpoints.
 - AVPlayer playback for YouTube and addon tracks when a native-playable direct stream is available.
@@ -44,7 +46,8 @@ Then select the BitChord scheme and an iOS 15.0+ simulator or device. A GitHub A
 This is an actively developing port, not yet a feature-complete or release-ready replacement for the iOS 17+ app.
 
 - YouTube audio extraction is supplied by the separate YouTubeKit Swift package rather than a port of BitChord's Android InnerTubeX/NewPipe pipeline. It is an unofficial extractor, may break after YouTube changes, and can fail for region-, age-, account- or policy-restricted videos. On extraction failure, the app offers an Open in YouTube Music fallback.
-- Google / YouTube account authentication and cookie/session management are not implemented. Do not enter Google passwords or paste private session cookies into arbitrary endpoints.
+- The iOS port currently stores one active YouTube Music session at a time. Reconnect to switch accounts; full multi-account management and the dedicated in-session channel-switch screen from Android are not yet ported. Google credentials are entered only on Google's own sign-in page and are never read by BitChord.
+- YouTubeKit playback extraction currently does not consume the saved YouTube Music cookies. The session authenticates catalogue requests, but age-restricted, private, members-only or otherwise account-gated audio extraction is not guaranteed. Public playable videos are resolved locally; remote extraction fallback remains disabled.
 - Addon support currently expects a compatible server to return direct stream URLs. It does not yet implement the full manifest settings negotiation, download policy, health checks, quality tiers, or request-header handling from the Android implementation.
 - Lyrics currently use LRCLIB only; multiple-provider priority, translations, word timing and source settings remain to be ported.
 - Downloads currently save direct stream URLs only. Resume, cache management, metadata/tag writing and source-specific download permissions remain outstanding.
