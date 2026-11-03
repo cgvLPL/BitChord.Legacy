@@ -36,6 +36,9 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
         request.setValue("https://music.youtube.com/", forHTTPHeaderField: "Referer")
+        request.setValue("https://music.youtube.com", forHTTPHeaderField: "X-Origin")
+        request.setValue("67", forHTTPHeaderField: "X-YouTube-Client-Name")
+        request.setValue(authStore?.account?.clientVersion ?? "1.20250101.01.00", forHTTPHeaderField: "X-YouTube-Client-Version")
         authStore?.applyAuthentication(to: &request)
         let account = authStore?.account
         var client: [String: Any] = [
@@ -59,7 +62,11 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let (data, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw CatalogError.badResponse }
+        guard let http = response as? HTTPURLResponse else { throw CatalogError.badResponse }
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw CatalogError.server("YouTube Music rejected this account session. Reconnect your Google account and try again.")
+        }
+        guard http.statusCode == 200 else { throw CatalogError.badResponse }
         let json = try JSONSerialization.jsonObject(with: data)
         var found: [Track] = []
         collectTracks(in: json, into: &found)
