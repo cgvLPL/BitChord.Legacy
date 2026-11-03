@@ -56,12 +56,20 @@ final class YouTubeMusicAuthStore: ObservableObject {
             kSecAttrService as String: service,
             kSecAttrAccount as String: accountKey
         ]
-        SecItemDelete(query as CFDictionary)
-        var attributes = query
-        attributes[kSecValueData as String] = data
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let status = SecItemAdd(attributes as CFDictionary, nil)
-        guard status == errSecSuccess else { throw AuthError.keychain(status) }
+        var attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            attributes[kSecClass as String] = kSecClassGenericPassword
+            attributes[kSecAttrService as String] = service
+            attributes[kSecAttrAccount as String] = accountKey
+            let addStatus = SecItemAdd(attributes as CFDictionary, nil)
+            guard addStatus == errSecSuccess else { throw AuthError.keychain(addStatus) }
+        } else if updateStatus != errSecSuccess {
+            throw AuthError.keychain(updateStatus)
+        }
         DispatchQueue.main.async { self.account = account }
     }
 
