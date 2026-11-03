@@ -177,11 +177,11 @@ private struct YouTubeMusicWebView: UIViewRepresentable {
             """
 
             webView.evaluateJavaScript(probe) { [weak self, weak webView] result, _ in
-                guard let self = self,
-                      let webView = webView,
+                guard let self = self else { return }
+                guard let webView = webView,
                       let config = result as? [String: Any],
                       config["loggedIn"] as? Bool == true else {
-                    self?.onUnavailable()
+                    self.onUnavailable()
                     return
                 }
                 webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
