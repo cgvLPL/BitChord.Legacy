@@ -598,7 +598,12 @@ private struct TrackRow: View {
 
 private final class ArtworkImageLoader: ObservableObject {
     @Published private(set) var image: UIImage?
-    private static let cache = NSCache<NSURL, UIImage>()
+    private static let cache: NSCache<NSURL, UIImage> = {
+        let cache = NSCache<NSURL, UIImage>()
+        cache.totalCostLimit = 12 * 1024 * 1024
+        cache.countLimit = 80
+        return cache
+    }()
     private var task: URLSessionDataTask?
 
     func load(_ url: URL?) {
@@ -624,14 +629,15 @@ private final class ArtworkImageLoader: ObservableObject {
 
 private struct ArtworkView: View {
     let url: URL?
+    var size: CGFloat = 54
     @StateObject private var loader = ArtworkImageLoader()
     var body: some View {
         Group {
             if let image = loader.image { Image(uiImage: image).resizable().scaledToFill() }
             else { artworkPlaceholder }
         }
-        .frame(width: 54, height: 54)
-        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size > 100 ? 18 : 9))
         .onAppear { loader.load(url) }
         .onChange(of: url) { loader.load($0) }
     }
@@ -670,7 +676,8 @@ private struct NowPlayingScreen: View {
     @State private var lyricsMessage = "Lyrics have not been loaded."
 
     var body: some View {
-        VStack(spacing: 20) {
+        ScrollView {
+            VStack(spacing: 14) {
             HStack {
                 Button("Done") { presentationMode.wrappedValue.dismiss() }
                 Spacer()
@@ -679,9 +686,9 @@ private struct NowPlayingScreen: View {
                 Button { } label: { Image(systemName: "ellipsis").frame(width: 40) }
             }.padding(.top, 20)
 
-            ArtworkView(url: playback.currentTrack?.artworkURL)
-                .frame(maxWidth: 320).aspectRatio(1, contentMode: .fit)
-                .background(Color.white.opacity(0.06)).cornerRadius(20)
+            ArtworkView(url: playback.currentTrack?.artworkURL,
+                        size: min(260, UIScreen.main.bounds.width - 72))
+                .background(Color.white.opacity(0.06)).cornerRadius(18)
                 .frame(maxWidth: .infinity)
 
             VStack(spacing: 6) {
@@ -729,9 +736,10 @@ private struct NowPlayingScreen: View {
                 }
                 .frame(maxHeight: 150)
             }
-            Spacer(minLength: 0)
+            }
+            .padding(.bottom, 16)
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 18)
         .background(Color(red: 0.035, green: 0.035, blue: 0.045).ignoresSafeArea())
         .foregroundColor(.white)
     }
