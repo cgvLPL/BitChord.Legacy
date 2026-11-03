@@ -8,8 +8,6 @@ struct YouTubeMusicSignInView: View {
     @State private var hasReachedMusic = false
     @State private var isSaving = false
     @State private var message: String?
-    @State private var capturedCookie = ""
-    @State private var capturedConfig: [String: Any] = [:]
 
     private let signInURL = URL(string: "https://accounts.google.com/ServiceLogin?ltmpl=music&service=youtube&prompt=select_account&continue=https%3A%2F%2Fmusic.youtube.com%2F")!
 
@@ -20,9 +18,8 @@ struct YouTubeMusicSignInView: View {
                 captureRequest: captureRequest,
                 onPageReady: { ready in hasReachedMusic = ready },
                 onSession: { cookie, config in
-                    capturedCookie = cookie
-                    capturedConfig = config
                     message = nil
+                    Task { await saveSession(cookie: cookie, config: config) }
                 },
                 onUnavailable: {
                     message = "The signed-in YouTube Music session is not ready yet. Finish choosing your Google account or channel, then try again."
@@ -67,10 +64,6 @@ struct YouTubeMusicSignInView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .onChange(of: capturedCookie) { cookie in
-            guard !cookie.isEmpty else { return }
-            Task { await saveSession(cookie: cookie, config: capturedConfig) }
-        }
     }
 
     @MainActor
