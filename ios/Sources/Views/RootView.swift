@@ -8,6 +8,7 @@ struct RootView: View {
     @StateObject private var playlists = PlaylistStore()
     @StateObject private var downloads = DownloadManager()
     @StateObject private var authStore = YouTubeMusicAuthStore()
+    @StateObject private var musicLibrary = YouTubeMusicLibraryStore()
     @State private var selectedTab = 0
     @State private var showingPlayer = false
 
@@ -25,6 +26,14 @@ struct RootView: View {
         .environmentObject(playlists)
         .environmentObject(downloads)
         .environmentObject(authStore)
+        .environmentObject(musicLibrary)
+        .onChange(of: authStore.account?.savedAt) { _ in
+            if authStore.isSignedIn {
+                Task { await musicLibrary.refresh(authStore: authStore) }
+            } else {
+                musicLibrary.clear()
+            }
+        }
         .sheet(isPresented: $showingPlayer) { NowPlayingScreen() }
         .alert(item: Binding(
             get: { playback.notice.map(NoticeMessage.init) },
@@ -172,6 +181,7 @@ private struct ExploreScreen: View {
 }
 
 private struct SearchScreen: View {
+    @EnvironmentObject private var authStore: YouTubeMusicAuthStore
     @EnvironmentObject private var playback: PlaybackManager
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var downloads: DownloadManager
@@ -356,6 +366,8 @@ private struct SearchScreen: View {
 
 private struct LibraryScreen: View {
     @EnvironmentObject private var playback: PlaybackManager
+    @EnvironmentObject private var authStore: YouTubeMusicAuthStore
+    @EnvironmentObject private var musicLibrary: YouTubeMusicLibraryStore
     @EnvironmentObject private var playlists: PlaylistStore
     @EnvironmentObject private var downloads: DownloadManager
     @Binding var showingPlayer: Bool
@@ -365,6 +377,118 @@ private struct LibraryScreen: View {
     var body: some View {
         NavigationView {
             List {
+                if authStore.isSignedIn {
+                    Section(header: Text("YouTube Music")) {
+                        HStack {
+                            Label("Account library", systemImage: "person.crop.circle.fill")
+                            Spacer()
+                            if musicLibrary.isSyncing {
+                                ProgressView()
+                            } else {
+                                Button("Sync now") { Task { await musicLibrary.refresh(authStore: authStore) } }
+                            }
+                        }
+                        if let syncedAt = musicLibrary.snapshot.syncedAt {
+                            Text("Last synced \(syncedAt.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.footnote).foregroundColor(.secondary)
+                        } else {
+                            Text("Your YouTube Music library has not been synced yet.")
+                                .font(.footnote).foregroundColor(.secondary)
+                        }
+                        if let error = musicLibrary.errorMessage {
+                            Text(error).font(.footnote).foregroundColor(.orange)
+                        }
+                    }
+                    Section(header: Text("Liked Music (\(musicLibrary.snapshot.likedTracks.count))")) {
+                        if musicLibrary.snapshot.likedTracks.isEmpty {
+                            Text("No liked songs found.").foregroundColor(.secondary)
+                        }
+                        ForEach(Array(musicLibrary.snapshot.likedTracks.prefix(30))) { track in
+                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(track.title).foregroundColor(.primary)
+                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    Section(header: Text("Saved Songs (\(musicLibrary.snapshot.savedTracks.count))")) {
+                        if musicLibrary.snapshot.savedTracks.isEmpty {
+                            Text("No separately saved songs found.").foregroundColor(.secondary)
+                        }
+                        ForEach(Array(musicLibrary.snapshot.savedTracks.prefix(30))) { track in
+                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(track.title).foregroundColor(.primary)
+                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    Section(header: Text("Playlists (\(musicLibrary.snapshot.playlists.count))")) {
+                        if musicLibrary.snapshot.playlists.isEmpty {
+                            Text("No saved playlists found.").foregroundColor(.secondary)
+                        }
+                        ForEach(musicLibrary.snapshot.playlists) { item in
+                            if let destination = item.destinationURL {
+                                Link(destination: destination) {
+                                    HStack {
+                                        Image(systemName: "music.note.list")
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(item.title).foregroundColor(.primary)
+                                            Text(item.subtitle).font(.caption).foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section(header: Text("Albums (\(musicLibrary.snapshot.albums.count))")) {
+                        if musicLibrary.snapshot.albums.isEmpty {
+                            Text("No saved albums found.").foregroundColor(.secondary)
+                        }
+                        ForEach(musicLibrary.snapshot.albums) { item in
+                            if let destination = item.destinationURL {
+                                Link(destination: destination) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(item.title).foregroundColor(.primary)
+                                        Text(item.subtitle).font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section(header: Text("Artists (\(musicLibrary.snapshot.artists.count))")) {
+                        if musicLibrary.snapshot.artists.isEmpty {
+                            Text("No saved artists found.").foregroundColor(.secondary)
+                        }
+                        ForEach(musicLibrary.snapshot.artists) { item in
+                            if let destination = item.destinationURL {
+                                Link(destination: destination) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(item.title).foregroundColor(.primary)
+                                        Text(item.subtitle).font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section(header: Text("Recently Played (\(musicLibrary.snapshot.recentlyPlayed.count))")) {
+                        ForEach(Array(musicLibrary.snapshot.recentlyPlayed.prefix(20))) { track in
+                            Link(destination: URL(string: "https://music.youtube.com/watch?v=\(track.id)")!) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(track.title).foregroundColor(.primary)
+                                    Text(track.artist).font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Section(header: Text("YouTube Music")) {
+                        Text("Sign in in Settings to sync your YouTube Music library.")
+                            .foregroundColor(.secondary)
+                    }
+                }
                 Section(header: Text("Playlists")) {
                     if playlists.playlists.isEmpty {
                         Text("Your playlists will appear here.").foregroundColor(.secondary)
@@ -413,6 +537,7 @@ private struct LibraryScreen: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear { Task { await musicLibrary.refreshIfNeeded(authStore: authStore) } }
     }
 }
 
