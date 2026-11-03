@@ -79,6 +79,12 @@ final class PlaybackManager: ObservableObject {
         seek(to: 0)
     }
 
+    func pause() {
+        player?.pause()
+        isPlaying = false
+        updateNowPlaying()
+    }
+
     func togglePlayback() {
         guard let player = player else { return }
         if isPlaying { player.pause(); isPlaying = false }
