@@ -9,12 +9,16 @@ final class PlaybackManager: ObservableObject {
     @Published private(set) var currentTime: Double = 0
     @Published private(set) var duration: Double = 0
     @Published private(set) var queue: [Track] = []
+    @Published private(set) var playbackSpeed: Double = 1.0
+    @Published private(set) var sleepTimerRemaining: Int?
     @Published var notice: String?
 
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var interruptionObserver: NSObjectProtocol?
     private var endObserver: NSObjectProtocol?
+    private var sleepTimer: Timer?
+    private var sleepTimerEnd: Date?
 
     init() {
         configureAudioSession()
@@ -78,13 +82,43 @@ final class PlaybackManager: ObservableObject {
     func togglePlayback() {
         guard let player = player else { return }
         if isPlaying { player.pause(); isPlaying = false }
-        else { player.play(); isPlaying = true }
+        else { player.playImmediately(atRate: Float(playbackSpeed)); isPlaying = true }
         updateNowPlaying()
     }
 
     func seek(to seconds: Double) {
         let safe = max(0, seconds.isFinite ? seconds : 0)
         player?.seek(to: CMTime(seconds: safe, preferredTimescale: 600))
+    }
+
+    func setSpeed(_ speed: Double) {
+        let allowed = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+        guard let selected = allowed.first(where: { abs($0 - speed) < 0.001 }) else { return }
+        playbackSpeed = selected
+        if isPlaying { player?.playImmediately(atRate: Float(selected)) }
+    }
+
+    func startSleepTimer(minutes: Int) {
+        cancelSleepTimer()
+        guard minutes > 0 else { return }
+        sleepTimerEnd = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        sleepTimerRemaining = minutes * 60
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self = self, let end = self.sleepTimerEnd else { timer.invalidate(); return }
+            let remaining = max(0, Int(end.timeIntervalSinceNow.rounded(.up)))
+            self.sleepTimerRemaining = remaining
+            if remaining == 0 {
+                self.pause()
+                self.cancelSleepTimer()
+            }
+        }
+    }
+
+    func cancelSleepTimer() {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        sleepTimerEnd = nil
+        sleepTimerRemaining = nil
     }
 
     private func configureAudioSession() {
@@ -101,7 +135,7 @@ final class PlaybackManager: ObservableObject {
         let commands = MPRemoteCommandCenter.shared()
         commands.playCommand.addTarget { [weak self] _ in
             guard let self = self, self.player != nil else { return .commandFailed }
-            self.player?.play(); self.isPlaying = true; self.updateNowPlaying()
+            self.player?.playImmediately(atRate: Float(self.playbackSpeed)); self.isPlaying = true; self.updateNowPlaying()
             return .success
         }
         commands.pauseCommand.addTarget { [weak self] _ in
