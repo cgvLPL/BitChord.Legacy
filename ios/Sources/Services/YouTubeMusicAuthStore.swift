@@ -40,11 +40,11 @@ final class YouTubeMusicAuthStore: ObservableObject {
         let account = YouTubeMusicAccount(
             cookieHeader: cookieHeader,
             sapisid: sapisid,
-            authUser: String(describing: config["SESSION_INDEX"] ?? "0"),
-            pageID: config["DELEGATED_SESSION_ID"] as? String,
-            visitorData: config["VISITOR_DATA"] as? String,
-            clientVersion: config["INNERTUBE_CLIENT_VERSION"] as? String,
-            loggedIn: (config["LOGGED_IN"] as? Bool) ?? true,
+            authUser: String(describing: config["authUser"] ?? config["SESSION_INDEX"] ?? "0"),
+            pageID: (config["pageId"] as? String) ?? (config["DELEGATED_SESSION_ID"] as? String),
+            visitorData: (config["visitorData"] as? String) ?? (config["VISITOR_DATA"] as? String),
+            clientVersion: (config["clientVersion"] as? String) ?? (config["INNERTUBE_CLIENT_VERSION"] as? String),
+            loggedIn: (config["loggedIn"] as? Bool) ?? (config["LOGGED_IN"] as? Bool) ?? true,
             accountName: config["ACCOUNT_NAME"] as? String,
             savedAt: Date()
         )
