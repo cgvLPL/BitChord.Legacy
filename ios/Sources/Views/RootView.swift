@@ -171,8 +171,7 @@ private struct SearchScreen: View {
                             }, secondaryAction: { playback.addToQueue(track) },
                                downloadAction: {
                                    Task {
-                                       do { try await downloads.download(track) }
-                                       catch { errorMessage = error.localizedDescription }
+                                       await download(track)
                                    }
                                },
                                playlistAction: {
@@ -215,7 +214,7 @@ private struct SearchScreen: View {
     private func play(_ track: Track) {
         if track.streamURL != nil { playback.play(track); return }
         guard track.provider == "addon", let id = track.providerID,
-              let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL) else {
+              let addon = try? AddonCatalog(baseURLString: settings.addonBaseURL, quality: settings.preferredQuality) else {
             openYouTube(track)
             return
         }
