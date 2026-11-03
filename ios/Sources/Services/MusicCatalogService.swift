@@ -24,9 +24,7 @@ final class YouTubeMusicCatalog: MusicCatalogService {
     private let session: URLSession
     private let endpoint = URL(string: "https://music.youtube.com/youtubei/v1/search?prettyPrint=false")!
 
-    init(session: URLSession = .shared) {
-        self.session = session
-    }
+    init(session: URLSession = .shared) { self.session = session }
 
     func search(_ query: String) async throws -> [Track] {
         var request = URLRequest(url: endpoint)
@@ -35,14 +33,12 @@ final class YouTubeMusicCatalog: MusicCatalogService {
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
         request.setValue("https://music.youtube.com/", forHTTPHeaderField: "Referer")
         let payload: [String: Any] = [
-            "context": [
-                "client": [
-                    "clientName": "WEB_REMIX",
-                    "clientVersion": "1.20250616.01.00",
-                    "hl": Locale.current.languageCode ?? "en",
-                    "gl": Locale.current.regionCode ?? "US"
-                ]
-            ],
+            "context": ["client": [
+                "clientName": "WEB_REMIX",
+                "clientVersion": "1.20250616.01.00",
+                "hl": Locale.current.languageCode ?? "en",
+                "gl": Locale.current.regionCode ?? "US"
+            ]],
             "query": query
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -58,9 +54,7 @@ final class YouTubeMusicCatalog: MusicCatalogService {
     private func collectTracks(in value: Any, into tracks: inout [Track]) {
         if let dictionary = value as? [String: Any] {
             if let renderer = dictionary["musicResponsiveListItemRenderer"] as? [String: Any],
-               let track = parse(renderer) {
-                tracks.append(track)
-            }
+               let track = parse(renderer) { tracks.append(track) }
             for child in dictionary.values { collectTracks(in: child, into: &tracks) }
         } else if let array = value as? [Any] {
             for child in array { collectTracks(in: child, into: &tracks) }
@@ -73,17 +67,12 @@ final class YouTubeMusicCatalog: MusicCatalogService {
             let runs = ((column["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any])?["text"] as? [String: Any])?["runs"] as? [[String: Any]]
             return runs?.compactMap { $0["text"] as? String }.joined()
         }
-        guard let title = title, !title.isEmpty else { return nil }
-
+        guard let title = title, !title.isEmpty, let id = findVideoID(in: renderer) else { return nil }
         var artist = "Unknown artist"
         if flex.count > 1 {
             let runs = ((flex[1]["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any])?["text"] as? [String: Any])?["runs"] as? [[String: Any]]
             artist = runs?.compactMap { $0["text"] as? String }.joined(separator: " ") ?? artist
         }
-        let videoID = ((renderer["playlistItemData"] as? [String: Any])?["videoId"] as? String)
-            ?? findVideoID(in: renderer)
-        guard let id = videoID else { return nil }
-
         let thumbnails = ((renderer["thumbnail"] as? [String: Any])?["musicThumbnailRenderer"] as? [String: Any])?["thumbnail"] as? [String: Any]
         let thumbList = thumbnails?["thumbnails"] as? [[String: Any]]
         let artwork = (thumbList?.last?["url"] as? String).flatMap(URL.init(string:))
@@ -112,8 +101,9 @@ final class AddonCatalog: MusicCatalogService {
 
     init(baseURLString: String, session: URLSession = .shared) throws {
         guard let url = URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)),
-              url.scheme == "https" || url.scheme == "http",
-              url.host != nil else { throw CatalogError.invalidURL }
+              url.scheme == "https" || url.scheme == "http", url.host != nil else {
+            throw CatalogError.invalidURL
+        }
         self.baseURL = url
         self.session = session
     }
@@ -127,17 +117,35 @@ final class AddonCatalog: MusicCatalogService {
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw CatalogError.badResponse }
-        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let rows = object?["tracks"] as? [[String: Any]] ?? []
-        return rows.compactMap { row in
-            guard let id = row["id"] as? String, let title = row["title"] as? String else { return nil }
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
+              let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw CatalogError.badResponse
+        }
+        let rows = object["tracks"] as? [[String: Any]] ?? []
+        var tracks: [Track] = []
+        for row in rows.prefix(30) {
+            guard let id = row["id"] as? String, let title = row["title"] as? String else { continue }
             let artist = row["artist"] as? String ?? "Unknown artist"
             let album = row["album"] as? String ?? ""
-            let artwork = (row["artwork"] as? String).flatMap(URL.init(string:))
-            let stream = (row["url"] as? String).flatMap(URL.init(string:))
-            return Track(id: "addon:\(id)", title: title, artist: artist, album: album,
-                         artworkURL: artwork, streamURL: stream, provider: "addon", providerID: id)
+            let artwork = ((row["artworkURL"] as? String) ?? (row["albumArtworkURL"] as? String)).flatMap(URL.init(string:))
+            var stream = (row["streamURL"] as? String).flatMap(URL.init(string:))
+            if stream == nil {
+                stream = try? await resolveStream(trackID: id)
+            }
+            tracks.append(Track(id: "addon:\(id)", title: title, artist: artist, album: album,
+                                artworkURL: artwork, streamURL: stream, provider: "addon", providerID: id))
         }
+        return tracks
+    }
+
+    private func resolveStream(trackID: String) async throws -> URL? {
+        let url = baseURL.appendingPathComponent("stream").appendingPathComponent(trackID)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 25
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
+              let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rawURL = object["url"] as? String else { return nil }
+        return URL(string: rawURL)
     }
 }
